@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ColorWars - Strategic Board Game</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">
+                <span class="color-red">Color</span><span class="color-blue">Wars</span>
+            </h1>
+            <div class="game-subtitle">Dominate the board through strategic explosions</div>
+        </header>
+
+        <div class="game-interface">
+            <div class="game-sidebar">
+                <div class="player-info">
+                    <div class="player-card active" id="player1-card">
+                        <div class="player-color player-red"></div>
+                        <div class="player-name">Red Player</div>
+                        <div class="player-cells" id="red-cells">0</div>
+                    </div>
+                    <div class="player-card" id="player2-card">
+                        <div class="player-color player-blue"></div>
+                        <div class="player-name">Blue Player</div>
+                        <div class="player-cells" id="blue-cells">0</div>
+                    </div>
+                </div>
+
+                <div class="game-controls">
+                    <button class="btn btn-primary" id="new-game-btn">New Game</button>
+                    <button class="btn btn-secondary" id="undo-btn" disabled>Undo</button>
+                    <button class="btn btn-secondary" id="hint-btn">Hint</button>
+                </div>
+
+                <div class="game-settings">
+                    <div class="setting-group">
+                        <label for="board-size">Board Size:</label>
+                        <select id="board-size">
+                            <option value="6">6x6</option>
+                            <option value="8">8x8</option>
+                            <option value="9">9x9</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="game-mode">Game Mode:</label>
+                        <select id="game-mode">
+                            <option value="local">Local Multiplayer</option>
+                            <option value="ai">vs Computer</option>
+                            <option value="online">Online Multiplayer</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="difficulty">AI Difficulty:</label>
+                        <select id="difficulty" disabled>
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="sound-toggle" checked>
+                            <span class="checkmark"></span>
+                            Sound Effects
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="animation-toggle" checked>
+                            <span class="checkmark"></span>
+                            Animations
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-board-container">
+                <div class="current-turn" id="current-turn">
+                    <span class="turn-indicator">Red Player's Turn</span>
+                </div>
+                <div class="game-board" id="game-board"></div>
+                <div class="game-status" id="game-status">
+                    Place dots on empty cells or your own cells to start chain reactions!
+                </div>
+            </div>
+        </div>
+
+        <div class="game-footer">
+            <div class="rules-toggle" id="rules-toggle">Show Rules</div>
+        </div>
+    </div>
+
+    <div class="modal" id="rules-modal">
+        <div class="modal-content">
+            <span class="close" id="close-rules">&times;</span>
+            <h2>Game Rules</h2>
+            <div class="rules-content">
+                <h3>🎯 Objective</h3>
+                <p>Dominate the board by converting all opponent's cells into your color using strategic dot explosions and chain reactions.</p>
+                
+                <h3>🔄 How to Play</h3>
+                <ul>
+                    <li><strong>First Move:</strong> Each player's first move can be placed anywhere and starts with 3 dots</li>
+                    <li><strong>Following Moves:</strong> Players can only add dots to their own cells (not empty cells)</li>
+                    <li><strong>Cell Limits:</strong> Corner cells: 2 dots max, Edge cells: 3 dots max, Center cells: 4 dots max</li>
+                    <li><strong>Explosions:</strong> When a cell reaches its limit, it explodes and sends dots to adjacent cells</li>
+                    <li><strong>Conversion:</strong> Empty cells can only be converted through explosions from adjacent cells</li>
+                    <li><strong>Chain Reactions:</strong> Explosions can trigger more explosions in a cascade</li>
+                </ul>
+
+                <h3>💥 Explosions</h3>
+                <ul>
+                    <li>Exploding cells convert adjacent opponent cells to your color</li>
+                    <li>Each adjacent cell receives one dot from the explosion</li>
+                    <li>This can trigger additional explosions in a chain reaction</li>
+                </ul>
+
+                <h3>🏁 Victory</h3>
+                <p>Win by eliminating all opponent dots from the board!</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="win-modal">
+        <div class="modal-content">
+            <h2 id="win-message">Player Wins!</h2>
+            <div class="win-stats" id="win-stats"></div>
+            <button class="btn btn-primary" id="play-again-btn">Play Again</button>
+        </div>
+    </div>
+
+    <div class="modal" id="multiplayer-modal">
+        <div class="modal-content">
+            <span class="close" id="close-multiplayer">&times;</span>
+            <h2>Online Multiplayer</h2>
+            <div class="multiplayer-content">
+                <div class="multiplayer-section">
+                    <h3>Create Room</h3>
+                    <p>Create a new room and invite your friends!</p>
+                    <div class="input-group">
+                        <input type="text" id="create-player-name" placeholder="Enter your name" maxlength="20">
+                        <button class="btn btn-primary" id="create-room-btn">Create Room</button>
+                    </div>
+                </div>
+                
+                <div class="multiplayer-divider">OR</div>
+                
+                <div class="multiplayer-section">
+                    <h3>Join Room</h3>
+                    <p>Join a friend's room using their Room ID</p>
+                    <div class="input-group">
+                        <input type="text" id="join-player-name" placeholder="Enter your name" maxlength="20">
+                        <input type="text" id="room-id-input" placeholder="Enter Room ID" maxlength="8">
+                        <button class="btn btn-primary" id="join-room-btn">Join Room</button>
+                    </div>
+                </div>
+                
+                <div class="room-info" id="room-info" style="display: none;">
+                    <h3>Room Created!</h3>
+                    <div class="room-details">
+                        <p><strong>Room ID:</strong> <span id="current-room-id"></span></p>
+                        <p><strong>Share this ID with your friend to join!</strong></p>
+                        <button class="btn btn-secondary" id="copy-room-id">Copy Room ID</button>
+                    </div>
+                    <div class="waiting-message">
+                        <p>Waiting for opponent to join...</p>
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+                
+                <div class="connection-status" id="connection-status">
+                    <span class="status-indicator" id="status-indicator">●</span>
+                    <span id="status-text">Connecting...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html> 
