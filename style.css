@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Orbitron', monospace;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #ffc3a0 0%, #ffafbd 100%);
     min-height: 100vh;
     color: #333;
     overflow-x: hidden;
@@ -21,8 +21,6 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    width: 100%;
-    box-sizing: border-box;
 }
 
 /* Header */
@@ -245,8 +243,6 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 0;
-    width: 100%;
 }
 
 .current-turn {
@@ -268,15 +264,21 @@ body {
 /* Game Board */
 .game-board {
     display: grid;
-    gap: 3px;
-    background: rgba(255, 255, 255, 0.1);
+    gap: 6px;
+    background: #e8a87c;
     padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    backdrop-filter: blur(10px);
-    max-width: 90vw;
-    max-height: 70vh;
-    aspect-ratio: 1;
+    border-radius: 25px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.game-board:hover {
+    transform: scale(1.01);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+}
+
+.game-board.size-5 {
+    grid-template-columns: repeat(5, 1fr);
 }
 
 .game-board.size-6 {
@@ -292,48 +294,47 @@ body {
 }
 
 .cell {
-    aspect-ratio: 1;
-    min-width: 0;
-    min-height: 0;
-    width: 100%;
-    height: 100%;
-    max-width: 80px;
-    max-height: 80px;
-    background: rgba(255, 255, 255, 0.9);
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    border-radius: 10px;
+    width: 60px;
+    height: 60px;
+    background: #f4d4aa;
+    border: none;
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     overflow: hidden;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.1);
 }
 
 .cell:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+    transform: scale(1.05) translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
 
 .cell.red {
-    background: linear-gradient(135deg, #ff6b6b, #ff4757);
-    border-color: #ff4757;
+    background: #ff6b6b;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
 }
 
 .cell.blue {
-    background: linear-gradient(135deg, #74b9ff, #3742fa);
-    border-color: #3742fa;
+    background: #4ecdc4;
+    box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
 }
 
 .cell.empty:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: #f0d8b8;
     cursor: not-allowed;
+    transform: scale(1.02);
 }
 
 .cell.empty.first-move-allowed:hover {
-    background: rgba(255, 255, 255, 0.8);
+    background: #ecd4b4;
     cursor: pointer;
+    transform: scale(1.05) translateY(-1px);
+    box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
 }
 
 .cell.disabled {
@@ -350,55 +351,308 @@ body {
 .dots {
     display: flex;
     flex-wrap: wrap;
-    gap: 2px;
+    gap: 3px;
     justify-content: center;
     align-items: center;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Vertical pattern for 2 dots */
+.dots.vertical {
+    display: block;
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.dots.vertical .dot:nth-child(1) {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.dots.vertical .dot:nth-child(2) {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Vertical-specific animations */
+.dots.vertical .dot:nth-child(1),
+.dots.vertical .dot:nth-child(2) {
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseVertical 2s ease-in-out infinite;
+}
+
+.dots.vertical .dot:nth-child(1).expanding,
+.dots.vertical .dot:nth-child(2).expanding {
+    animation: dotExpandVertical 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes dotPulseVertical {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.05); }
+}
+
+@keyframes dotExpandVertical {
+    0% { 
+        transform: translateX(-50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(-50%) scale(1.4);
+        opacity: 0.8;
+    }
+    100% { 
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+    }
+}
+
+/* Triangle pattern for 3 dots */
+.dots.triangle {
+    display: block;
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.dots.triangle .dot:nth-child(1) {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.dots.triangle .dot:nth-child(2) {
+    position: absolute;
+    bottom: 12px;
+    left: 30%;
+    transform: translateX(-50%);
+}
+
+.dots.triangle .dot:nth-child(3) {
+    position: absolute;
+    bottom: 12px;
+    right: 30%;
+    transform: translateX(50%);
 }
 
 .dot {
-    width: 12px;
-    height: 12px;
-    min-width: 8px;
-    min-height: 8px;
-    max-width: 16px;
-    max-height: 16px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.9);
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    animation: dotPulse 1s ease-in-out infinite;
+    background: #ffffff;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulse 2s ease-in-out infinite;
+    transform-origin: center;
+}
+
+.dot.expanding {
+    animation: dotExpand 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes dotAppear {
+    0% { 
+        transform: scale(0) rotate(180deg);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.2) rotate(0deg);
+        opacity: 1;
+    }
+    100% { 
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
 }
 
 @keyframes dotPulse {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+    50% { transform: scale(1.05); }
+}
+
+/* Triangle-specific pulse animation */
+.dots.triangle .dot:nth-child(1) {
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseTriangleTop 2s ease-in-out infinite;
+}
+
+.dots.triangle .dot:nth-child(2) {
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseTriangleBottomLeft 2s ease-in-out infinite;
+}
+
+.dots.triangle .dot:nth-child(3) {
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseTriangleBottomRight 2s ease-in-out infinite;
+}
+
+@keyframes dotPulseTriangleTop {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.05); }
+}
+
+@keyframes dotPulseTriangleBottomLeft {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.05); }
+}
+
+@keyframes dotPulseTriangleBottomRight {
+    0%, 100% { transform: translateX(50%) scale(1); }
+    50% { transform: translateX(50%) scale(1.05); }
+}
+
+@keyframes dotExpand {
+    0% { 
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.4);
+        opacity: 0.8;
+    }
+    100% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Triangle-specific dot expanding animation */
+.dots.triangle .dot:nth-child(1).expanding {
+    animation: dotExpandTriangleTop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.dots.triangle .dot:nth-child(2).expanding {
+    animation: dotExpandTriangleBottomLeft 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.dots.triangle .dot:nth-child(3).expanding {
+    animation: dotExpandTriangleBottomRight 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes dotExpandTriangleTop {
+    0% { 
+        transform: translateX(-50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(-50%) scale(1.4);
+        opacity: 0.8;
+    }
+    100% { 
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes dotExpandTriangleBottomLeft {
+    0% { 
+        transform: translateX(-50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(-50%) scale(1.4);
+        opacity: 0.8;
+    }
+    100% { 
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes dotExpandTriangleBottomRight {
+    0% { 
+        transform: translateX(50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(50%) scale(1.4);
+        opacity: 0.8;
+    }
+    100% { 
+        transform: translateX(50%) scale(1);
+        opacity: 1;
+    }
 }
 
 /* Explosion Animation */
 .cell.exploding {
-    animation: explode 0.6s ease-out;
+    animation: explode 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 10;
 }
 
 @keyframes explode {
-    0% { transform: scale(1); }
-    50% { 
-        transform: scale(1.5);
-        box-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+    0% { 
+        transform: scale(1) rotate(0deg);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
-    100% { transform: scale(1); }
+    25% {
+        transform: scale(1.3) rotate(5deg);
+        box-shadow: 0 0 40px rgba(255, 255, 255, 0.9), 0 0 60px rgba(255, 215, 0, 0.6);
+    }
+    50% { 
+        transform: scale(1.6) rotate(-3deg);
+        box-shadow: 0 0 50px rgba(255, 255, 255, 1), 0 0 80px rgba(255, 215, 0, 0.8);
+        border-color: #ffd700;
+    }
+    75% {
+        transform: scale(1.2) rotate(2deg);
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.7), 0 0 50px rgba(255, 215, 0, 0.5);
+    }
+    100% { 
+        transform: scale(1) rotate(0deg);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
 }
 
 /* Chain Reaction Effect */
 .cell.chain-reaction {
-    animation: chainReaction 0.4s ease-out;
+    animation: chainReaction 0.5s ease-out;
+    z-index: 5;
 }
 
 @keyframes chainReaction {
-    0% { transform: scale(1); }
-    50% { 
-        transform: scale(1.2);
-        box-shadow: 0 0 25px rgba(255, 255, 0, 0.6);
+    0% { 
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
-    100% { transform: scale(1); }
+    30% { 
+        transform: scale(1.25);
+        box-shadow: 0 0 30px rgba(78, 205, 196, 0.8), 0 0 50px rgba(78, 205, 196, 0.4);
+        border-color: #4ecdc4;
+    }
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 20px rgba(78, 205, 196, 0.6);
+    }
+    100% { 
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+}
+
+/* Dot placement animation */
+.cell.placing-dot {
+    animation: placeDot 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes placeDot {
+    0% {
+        transform: scale(1);
+    }
+    30% {
+        transform: scale(1.2);
+        box-shadow: 0 0 25px rgba(78, 205, 196, 0.6);
+    }
+    70% {
+        transform: scale(0.95);
+        box-shadow: 0 0 15px rgba(78, 205, 196, 0.4);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
 /* Game Status */
@@ -500,25 +754,8 @@ body {
     text-align: center;
 }
 
-/* Large Screen Optimization */
-@media (min-width: 1400px) {
-    .game-board {
-        max-width: 600px;
-        max-height: 600px;
-    }
-    
-    .cell {
-        max-width: 70px;
-        max-height: 70px;
-    }
-    
-    .game-sidebar {
-        width: 350px;
-    }
-}
-
 /* Responsive Design */
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
     .game-interface {
         flex-direction: column;
         gap: 20px;
@@ -526,8 +763,6 @@ body {
     
     .game-sidebar {
         width: 100%;
-        max-width: 600px;
-        margin: 0 auto;
         order: 2;
     }
     
@@ -535,36 +770,13 @@ body {
         order: 1;
     }
     
-    .game-board {
-        max-width: 80vw;
-        max-height: 60vh;
-    }
-    
     .cell {
-        max-width: 60px;
-        max-height: 60px;
-    }
-}
-
-@media (max-width: 768px) {
-    .game-container {
-        padding: 15px;
+        width: 45px;
+        height: 45px;
     }
     
     .game-title {
         font-size: 2rem;
-    }
-    
-    .game-board {
-        max-width: 85vw;
-        max-height: 50vh;
-        padding: 15px;
-    }
-    
-    .cell {
-        max-width: 45px;
-        max-height: 45px;
-        border-radius: 8px;
     }
     
     .dot {
@@ -574,39 +786,8 @@ body {
     
     .modal-content {
         width: 95%;
-        margin: 5% auto;
+        margin: 10% auto;
         padding: 20px;
-        max-height: 90vh;
-        overflow-y: auto;
-    }
-    
-    .input-group {
-        max-width: 280px;
-    }
-    
-    .input-group input {
-        padding: 10px;
-        font-size: 0.9rem;
-    }
-    
-    .multiplayer-section {
-        margin: 20px 0;
-        padding: 15px;
-    }
-    
-    .game-sidebar {
-        padding: 20px;
-    }
-    
-    .player-card {
-        flex-direction: column;
-        text-align: center;
-        padding: 10px;
-    }
-    
-    .player-color {
-        width: 25px;
-        height: 25px;
     }
 }
 
@@ -615,22 +796,9 @@ body {
         padding: 10px;
     }
     
-    .game-title {
-        font-size: 1.5rem;
-    }
-    
-    .game-board {
-        max-width: 90vw;
-        max-height: 45vh;
-        padding: 10px;
-        gap: 2px;
-    }
-    
     .cell {
-        max-width: 35px;
-        max-height: 35px;
-        border-radius: 6px;
-        border-width: 1px;
+        width: 35px;
+        height: 35px;
     }
     
     .dot {
@@ -638,104 +806,12 @@ body {
         height: 8px;
     }
     
-    .game-sidebar {
-        padding: 15px;
-    }
-    
-    .btn {
-        padding: 10px 15px;
-        font-size: 0.9rem;
-    }
-    
-    .player-card {
-        padding: 8px;
-        margin-bottom: 10px;
-    }
-    
-    .player-name {
-        font-size: 1rem;
-    }
-    
-    .player-cells {
-        font-size: 1.1rem;
-    }
-    
-    .turn-indicator {
-        font-size: 1.1rem;
-        padding: 8px 15px;
-    }
-    
-    .game-status {
-        font-size: 1rem;
-        padding: 12px 20px;
-    }
-}
-
-@media (max-width: 320px) {
-    .game-board {
-        max-width: 95vw;
-        max-height: 40vh;
-        padding: 8px;
-    }
-    
-    .cell {
-        max-width: 28px;
-        max-height: 28px;
-        border-radius: 4px;
-    }
-    
-    .dot {
-        width: 6px;
-        height: 6px;
-    }
-    
-    .game-title {
-        font-size: 1.2rem;
-    }
-    
-    .turn-indicator {
-        font-size: 1rem;
-        padding: 6px 12px;
-    }
-}
-
-/* Landscape Mobile Optimization */
-@media (max-height: 500px) and (orientation: landscape) {
-    .game-container {
-        padding: 10px;
-    }
-    
-    .game-header {
-        margin-bottom: 15px;
-    }
-    
     .game-title {
         font-size: 1.5rem;
-        margin-bottom: 5px;
     }
     
-    .game-subtitle {
-        font-size: 0.9rem;
-    }
-    
-    .game-board {
-        max-height: 50vh;
-        padding: 10px;
-    }
-    
-    .current-turn {
-        margin-bottom: 10px;
-    }
-    
-    .turn-indicator {
-        font-size: 0.9rem;
-        padding: 5px 15px;
-    }
-    
-    .game-status {
-        margin-top: 10px;
-        font-size: 0.9rem;
-        padding: 10px 20px;
+    .game-sidebar {
+        padding: 15px;
     }
 }
 

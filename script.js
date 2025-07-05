@@ -1,7 +1,7 @@
 // ColorWars Game Logic
 class ColorWarsGame {
     constructor() {
-        this.boardSize = 6;
+        this.boardSize = 5;
         this.board = [];
         this.currentPlayer = 'red';
         this.gameMode = 'local';
@@ -83,7 +83,15 @@ class ColorWarsGame {
         
         if (cellData.dots > 0) {
             const dotsContainer = document.createElement('div');
-            dotsContainer.className = 'dots';
+            
+            // Set appropriate class based on dot count
+            if (cellData.dots === 2) {
+                dotsContainer.className = 'dots vertical';
+            } else if (cellData.dots === 3) {
+                dotsContainer.className = 'dots triangle';
+            } else {
+                dotsContainer.className = 'dots';
+            }
             
             for (let i = 0; i < cellData.dots; i++) {
                 const dot = document.createElement('div');
@@ -143,6 +151,19 @@ class ColorWarsGame {
     }
 
     async makeMove(row, col, player) {
+        // Check if this is a first move BEFORE adding to history
+        const isFirstMove = (this.moveHistory.length === 0 && player === 'red') || 
+                           (this.moveHistory.length === 1 && player === 'blue');
+
+        // Add placement animation
+        const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (cellElement) {
+            cellElement.classList.add('placing-dot');
+            setTimeout(() => {
+                cellElement.classList.remove('placing-dot');
+            }, 600);
+        }
+
         // Save move for undo functionality
         this.moveHistory.push({
             board: this.deepCopyBoard(),
@@ -156,9 +177,6 @@ class ColorWarsGame {
         this.board[row][col].owner = player;
         
         // First move for each player starts with 3 dots
-        const isFirstMove = (this.moveHistory.length === 0 && player === 'red') || 
-                           (this.moveHistory.length === 1 && player === 'blue');
-        
         if (isFirstMove) {
             this.board[row][col].dots = 3;
         } else {
@@ -176,6 +194,20 @@ class ColorWarsGame {
         // Update UI
         this.renderBoard();
         this.updatePlayerStats();
+        
+        // Add expanding animation to newly placed dots
+        setTimeout(() => {
+            const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (cellElement) {
+                const dots = cellElement.querySelectorAll('.dot');
+                dots.forEach(dot => {
+                    dot.classList.add('expanding');
+                    setTimeout(() => {
+                        dot.classList.remove('expanding');
+                    }, 500);
+                });
+            }
+        }, 100);
 
         // Check win condition
         if (this.checkWinCondition()) {

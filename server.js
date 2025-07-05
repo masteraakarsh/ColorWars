@@ -36,7 +36,7 @@ class GameRoom {
             board: null,
             currentPlayer: 'red',
             gameStatus: 'waiting', // 'waiting', 'playing', 'ended'
-            boardSize: 6,
+            boardSize: 5,
             moveHistory: []
         };
         this.spectators = [];
@@ -154,6 +154,10 @@ class GameRoom {
              return { success: false, message: 'Invalid move - can only click your own cells' };
          }
 
+                // Check if this is a first move BEFORE adding to history
+        const isFirstMove = (this.gameState.moveHistory.length === 0 && player.color === 'red') || 
+                           (this.gameState.moveHistory.length === 1 && player.color === 'blue');
+
         // Save move to history
         this.gameState.moveHistory.push({
             board: this.deepCopyBoard(),
@@ -161,18 +165,15 @@ class GameRoom {
             move: { row, col }
         });
 
-                 // Make the move
-         this.gameState.board[row][col].owner = player.color;
-         
-         // First move for each player starts with 3 dots
-         const isFirstMove = (this.gameState.moveHistory.length === 0 && player.color === 'red') || 
-                            (this.gameState.moveHistory.length === 1 && player.color === 'blue');
-         
-         if (isFirstMove) {
-             this.gameState.board[row][col].dots = 3;
-         } else {
-             this.gameState.board[row][col].dots++;
-         }
+        // Make the move
+        this.gameState.board[row][col].owner = player.color;
+        
+        // First move for each player starts with 3 dots
+        if (isFirstMove) {
+            this.gameState.board[row][col].dots = 3;
+        } else {
+            this.gameState.board[row][col].dots++;
+        }
 
         // Handle explosions
         this.handleExplosions(row, col, player.color);
