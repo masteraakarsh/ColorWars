@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "echo 'No build step needed for this project'",
+    "build": "npm install",
     "test": "echo 'No tests specified yet'"
   },
   "keywords": [
@@ -30,7 +30,8 @@
     "nodemon": "^3.0.1"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": "18.x",
+    "npm": "9.x"
   },
   "repository": {
     "type": "git",

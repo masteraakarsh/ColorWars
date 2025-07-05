@@ -243,6 +243,114 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Sound effects generated using Web Audio API
 - Special thanks to the open-source community
 
+## 🚀 AWS Deployment
+
+### Option 1: AWS Elastic Beanstalk (Recommended)
+
+1. **Install AWS CLI and EB CLI**:
+   ```bash
+   # Install AWS CLI
+   pip install awscli
+   
+   # Install EB CLI
+   pip install awsebcli
+   
+   # Configure AWS credentials
+   aws configure
+   ```
+
+2. **Initialize Elastic Beanstalk**:
+   ```bash
+   # In your project directory
+   eb init
+   
+   # Select region (e.g., us-east-1)
+   # Choose Node.js platform
+   # Select latest Node.js version
+   ```
+
+3. **Create and Deploy**:
+   ```bash
+   # Create environment
+   eb create colorwars-production
+   
+   # Deploy your app
+   eb deploy
+   
+   # Open in browser
+   eb open
+   ```
+
+### Option 2: AWS App Runner
+
+1. **Create `apprunner.yaml`**:
+   ```yaml
+   version: 1.0
+   runtime: nodejs18
+   build:
+     commands:
+       build:
+         - npm install
+   run:
+     runtime-version: 18.17.0
+     command: npm start
+     network:
+       port: 3000
+       env: PORT
+   ```
+
+2. **Deploy via AWS Console**:
+   - Go to AWS App Runner
+   - Connect your GitHub repository
+   - Choose automatic deployment
+   - Your app will be live!
+
+### Option 3: AWS Lambda + API Gateway (Serverless)
+
+1. **Install Serverless Framework**:
+   ```bash
+   npm install -g serverless
+   serverless create --template aws-nodejs --path colorwars-serverless
+   ```
+
+2. **Configure `serverless.yml`**:
+   ```yaml
+   service: colorwars-game
+   provider:
+     name: aws
+     runtime: nodejs18.x
+   functions:
+     app:
+       handler: lambda.handler
+       events:
+         - http:
+             path: /{proxy+}
+             method: ANY
+         - http:
+             path: /
+             method: ANY
+   ```
+
+### AWS Deployment Configuration Files
+
+- ✅ `.ebextensions/` - Elastic Beanstalk configuration
+- ✅ `buildspec.yml` - AWS CodeBuild configuration
+- ✅ `package.json` - Optimized for AWS with Node.js 18.x
+- ✅ Environment variables - Supports AWS PORT configuration
+
+### Cost Estimation (Monthly)
+
+- **Elastic Beanstalk (t3.micro)**: ~$8-15/month
+- **App Runner**: ~$7-12/month  
+- **Lambda**: ~$0-5/month (pay per use)
+
+### Post-Deployment
+
+Your game will be accessible at:
+- **Elastic Beanstalk**: `https://colorwars-production.region.elasticbeanstalk.com`
+- **App Runner**: `https://xxx.region.awsapprunner.com`
+- **Lambda**: `https://xxx.execute-api.region.amazonaws.com`
+
 ## 📞 Support
 
 Need help? Here are your options:
