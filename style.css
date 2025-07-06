@@ -541,8 +541,8 @@ body {
 
 
 .cell {
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
     background: #f4d4aa;
     border: none;
     border-radius: 20px;
@@ -1620,4 +1620,231 @@ body {
         background: #444;
         color: #fff;
     }
+}
+
+/* Room ID Display During Gameplay */
+.game-room-id {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 12px 20px;
+    border-radius: 25px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.room-id-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.room-id-value {
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Orbitron', monospace;
+    letter-spacing: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.room-id-copy {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.room-id-copy:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+/* Room Creation Animation */
+.room-created-animation {
+    animation: roomCreated 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes roomCreated {
+    0% {
+        transform: scale(0.8) translateY(-20px);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.05) translateY(0);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Enhanced Waiting Room Styles */
+.room-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 20px !important;
+    padding: 25px !important;
+    margin-top: 20px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.room-info h3 {
+    color: white !important;
+    font-size: 24px !important;
+    margin-bottom: 20px !important;
+    text-align: center !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.room-details {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 15px !important;
+    padding: 20px !important;
+    margin-bottom: 20px !important;
+    backdrop-filter: blur(5px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.room-details p {
+    color: white !important;
+    margin: 10px 0 !important;
+    font-size: 16px !important;
+}
+
+.room-details strong {
+    color: #ffd700 !important;
+    font-weight: 700 !important;
+}
+
+#current-room-id {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    padding: 10px 15px !important;
+    border-radius: 12px !important;
+    font-family: 'Orbitron', monospace !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    letter-spacing: 2px !important;
+    display: inline-block !important;
+    margin-left: 10px !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+#copy-room-id {
+    background: linear-gradient(135deg, #2ed573 0%, #17a2b8 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 12px 20px !important;
+    border-radius: 25px !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+    margin-top: 10px !important;
+}
+
+#copy-room-id:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.waiting-room-colors {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 15px !important;
+    padding: 20px !important;
+    margin-bottom: 20px !important;
+    backdrop-filter: blur(5px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.waiting-room-colors h4 {
+    color: white !important;
+    margin-bottom: 15px !important;
+    font-size: 18px !important;
+}
+
+.waiting-room-player-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    margin-bottom: 10px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.waiting-room-player-color {
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 50% !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.waiting-room-player-name {
+    color: white !important;
+    font-weight: 600 !important;
+    flex-grow: 1 !important;
+}
+
+.waiting-room-player-status {
+    color: #2ed573 !important;
+    font-size: 18px !important;
+    font-weight: bold !important;
+}
+
+.my-color-selection {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.my-color-selection label {
+    color: white !important;
+    font-weight: 600 !important;
+    margin-right: 10px !important;
+}
+
+.waiting-message {
+    text-align: center !important;
+    padding: 20px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 15px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.waiting-message p {
+    color: white !important;
+    font-size: 16px !important;
+    margin: 10px 0 !important;
+}
+
+.waiting-message small {
+    color: #ffd700 !important;
+    font-weight: 600 !important;
+}
+
+.loading-spinner {
+    width: 40px !important;
+    height: 40px !important;
+    border: 4px solid rgba(255, 255, 255, 0.3) !important;
+    border-top: 4px solid white !important;
+    border-radius: 50% !important;
+    animation: spin 1s linear infinite !important;
+    margin: 20px auto !important;
 } 

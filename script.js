@@ -962,7 +962,11 @@ class ColorWarsGame {
 
     // Timer methods
     startTimer() {
-        if (!this.timerEnabled || this.gameState !== 'playing') return;
+        // Only start timer when game is actually playing, not in waiting room
+        if (!this.timerEnabled || this.gameState !== 'playing' || this.isOnlineGame && this.gameState === 'waiting') return;
+        
+        // Don't start timer for AI player in AI mode
+        if (this.gameMode === 'ai' && this.currentPlayer === this.players[1]) return;
         
         this.stopTimer(); // Clear any existing timer
         this.timeLeft = 30;
@@ -1626,7 +1630,6 @@ class ColorWarsGame {
 
     handleRoomCreated(data) {
         document.getElementById('current-room-id').textContent = data.roomId;
-        document.getElementById('room-info').style.display = 'block';
         this.currentRoomId = data.roomId;
         this.playerColor = data.player.color;
         this.isOnlineGame = true;
@@ -1635,7 +1638,7 @@ class ColorWarsGame {
         // Initialize connected players
         this.connectedPlayers = {};
         this.connectedPlayers[data.player.color] = {
-            name: data.player.name,
+            name: `${data.player.name} (You)`,
             color: data.player.color,
             connected: true
         };
@@ -1652,6 +1655,8 @@ class ColorWarsGame {
             }
         }
         
+        // Show waiting room UI
+        this.showWaitingRoomUI();
         this.updatePlayerCardsVisibility();
         this.updateHostUI();
         this.updateWaitingRoomDisplay();
@@ -1736,6 +1741,12 @@ class ColorWarsGame {
         this.updatePlayerCardsVisibility();
         this.updateUI();
         this.updatePlayerStats();
+        
+        // Start timer now that the game is actually playing
+        this.startTimer();
+        
+        // Show room ID during gameplay
+        this.showRoomIdDuringGame();
     }
 
     updateConnectedPlayersFromGameState(gameState) {
@@ -1900,8 +1911,7 @@ class ColorWarsGame {
     }
 
     showWaitingRoom(gameState) {
-        // Close the multiplayer modal
-        document.getElementById('multiplayer-modal').style.display = 'none';
+        // Don't close the multiplayer modal - show waiting room inside it
         
         // Set up waiting room state
         this.gameMode = 'online';
@@ -1912,10 +1922,16 @@ class ColorWarsGame {
         // Update connected players information
         this.updateConnectedPlayersFromGameState(gameState);
         
+        // Show waiting room UI with animation
+        this.showWaitingRoomUI();
+        
         // Update UI
         this.updatePlayerCardsVisibility();
         this.updateHostUI();
         this.updateWaitingRoomDisplay();
+        
+        // Stop timer during waiting room
+        this.stopTimer();
     }
 
     updateHostUI() {
@@ -1976,6 +1992,53 @@ class ColorWarsGame {
         allCells.forEach(cell => {
             cell.classList.remove('exploding', 'chain-reaction', 'placing-dot');
         });
+    }
+
+    showWaitingRoomUI() {
+        // Add room created animation and show waiting room
+        const roomInfo = document.getElementById('room-info');
+        const multiplayerContent = document.querySelector('.multiplayer-content');
+        
+        if (roomInfo && multiplayerContent) {
+            // Hide the create/join sections
+            const sections = multiplayerContent.querySelectorAll('.multiplayer-section, .multiplayer-divider');
+            sections.forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Show room info with animation
+            roomInfo.style.display = 'block';
+            roomInfo.classList.add('room-created-animation');
+            
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                roomInfo.classList.remove('room-created-animation');
+            }, 500);
+        }
+    }
+
+    showRoomIdDuringGame() {
+        // Create or update room ID display during gameplay
+        let roomIdDisplay = document.getElementById('game-room-id');
+        
+        if (!roomIdDisplay) {
+            roomIdDisplay = document.createElement('div');
+            roomIdDisplay.id = 'game-room-id';
+            roomIdDisplay.className = 'game-room-id';
+            
+            // Insert before the current turn indicator
+            const currentTurn = document.getElementById('current-turn');
+            currentTurn.parentNode.insertBefore(roomIdDisplay, currentTurn);
+        }
+        
+        if (this.currentRoomId) {
+            roomIdDisplay.innerHTML = `
+                <div class="room-id-label">Room ID:</div>
+                <div class="room-id-value">${this.currentRoomId}</div>
+                <button class="room-id-copy" onclick="navigator.clipboard.writeText('${this.currentRoomId}')">📋</button>
+            `;
+            roomIdDisplay.style.display = 'flex';
+        }
     }
 }
 
