@@ -913,6 +913,7 @@ body {
     .cell {
         width: 45px;
         height: 45px;
+        border-radius: 15px;
     }
     
     .game-title {
@@ -922,12 +923,79 @@ body {
     .dot {
         width: 10px;
         height: 10px;
+        border-width: 1px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    
+    /* Adjust dot positioning for smaller cells */
+    .dots.vertical .dot:nth-child(1) {
+        top: 10px;
+    }
+    
+    .dots.vertical .dot:nth-child(2) {
+        bottom: 10px;
+    }
+    
+    .dots.triangle .dot:nth-child(1) {
+        top: 8px;
+    }
+    
+    .dots.triangle .dot:nth-child(2) {
+        bottom: 8px;
+    }
+    
+    .dots.triangle .dot:nth-child(3) {
+        bottom: 8px;
+    }
+    
+    .dots {
+        gap: 2px;
     }
     
     .modal-content {
         width: 95%;
         margin: 10% auto;
         padding: 20px;
+    }
+}
+
+/* Medium mobile screens */
+@media (max-width: 600px) and (min-width: 481px) {
+    .cell {
+        width: 40px;
+        height: 40px;
+        border-radius: 13px;
+    }
+    
+    .dot {
+        width: 9px;
+        height: 9px;
+        border-width: 1px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    
+    .dots.vertical .dot:nth-child(1) {
+        top: 8px;
+    }
+    
+    .dots.vertical .dot:nth-child(2) {
+        bottom: 8px;
+    }
+    
+    .dots.triangle .dot:nth-child(1) {
+        top: 6px;
+    }
+    
+    .dots.triangle .dot:nth-child(2) {
+        bottom: 6px;
+    }
+    
+    .dots.triangle .dot:nth-child(3) {
+        bottom: 6px;
+    }
+    
+    .dots {
+        gap: 2px;
     }
 }
 
@@ -939,11 +1007,39 @@ body {
     .cell {
         width: 35px;
         height: 35px;
+        border-radius: 12px;
     }
     
     .dot {
         width: 8px;
         height: 8px;
+        border-width: 1px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    
+    /* Adjust dot positioning for very small cells */
+    .dots.vertical .dot:nth-child(1) {
+        top: 7px;
+    }
+    
+    .dots.vertical .dot:nth-child(2) {
+        bottom: 7px;
+    }
+    
+    .dots.triangle .dot:nth-child(1) {
+        top: 5px;
+    }
+    
+    .dots.triangle .dot:nth-child(2) {
+        bottom: 5px;
+    }
+    
+    .dots.triangle .dot:nth-child(3) {
+        bottom: 5px;
+    }
+    
+    .dots {
+        gap: 1px;
     }
     
     .game-title {
@@ -952,6 +1048,24 @@ body {
     
     .game-sidebar {
         padding: 15px;
+    }
+}
+
+/* Touch-friendly mobile interactions */
+@media (max-width: 768px) {
+    .cell {
+        -webkit-tap-highlight-color: rgba(78, 205, 196, 0.3);
+        tap-highlight-color: rgba(78, 205, 196, 0.3);
+    }
+    
+    .cell:active {
+        transform: scale(0.95);
+        transition: transform 0.1s ease;
+    }
+    
+    .btn:active {
+        transform: scale(0.98);
+        transition: transform 0.1s ease;
     }
 }
 
