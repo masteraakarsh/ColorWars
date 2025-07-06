@@ -52,13 +52,7 @@ body {
     color: #ffa502;
 }
 
-.color-purple {
-    color: #a55eea;
-}
 
-.color-orange {
-    color: #ff6348;
-}
 
 .game-subtitle {
     font-size: 1.1rem;
@@ -132,13 +126,7 @@ body {
     background: linear-gradient(135deg, #fdcb6e, #ffa502);
 }
 
-.player-purple {
-    background: linear-gradient(135deg, #fd79a8, #a55eea);
-}
 
-.player-orange {
-    background: linear-gradient(135deg, #ff7675, #ff6348);
-}
 
 .player-name {
     font-weight: 700;
@@ -325,6 +313,82 @@ body {
     border-radius: 25px;
     backdrop-filter: blur(10px);
     text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+}
+
+.turn-indicator.turn-changed {
+    animation: turnAlert 1s ease-out;
+}
+
+@keyframes turnAlert {
+    0% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(255, 255, 255, 0.5);
+    }
+    25% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    }
+    50% { 
+        transform: scale(1.02);
+        box-shadow: 0 0 30px rgba(255, 255, 255, 1);
+    }
+    75% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    }
+    100% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(255, 255, 255, 0.5);
+    }
+}
+
+.turn-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #4ecdc4, #44a08d);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+    z-index: 1000;
+    animation: slideInNotification 0.5s ease-out;
+    transform: translateX(100%);
+    font-family: 'Orbitron', monospace;
+}
+
+.turn-notification.show {
+    transform: translateX(0);
+}
+
+.turn-notification.hide {
+    animation: slideOutNotification 0.5s ease-out;
+    transform: translateX(100%);
+}
+
+@keyframes slideInNotification {
+    0% { 
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    100% { 
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutNotification {
+    0% { 
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% { 
+        transform: translateX(100%);
+        opacity: 0;
+    }
 }
 
 /* Game Board */
@@ -355,13 +419,7 @@ body {
     grid-template-columns: repeat(7, 1fr);
 }
 
-.game-board.size-8 {
-    grid-template-columns: repeat(8, 1fr);
-}
 
-.game-board.size-9 {
-    grid-template-columns: repeat(9, 1fr);
-}
 
 .cell {
     width: 60px;
@@ -404,15 +462,7 @@ body {
     box-shadow: 0 4px 15px rgba(255, 165, 2, 0.3);
 }
 
-.cell.purple {
-    background: #a55eea;
-    box-shadow: 0 4px 15px rgba(165, 94, 234, 0.3);
-}
 
-.cell.orange {
-    background: #ff6348;
-    box-shadow: 0 4px 15px rgba(255, 99, 72, 0.3);
-}
 
 .cell.empty:hover {
     background: #f0d8b8;
@@ -535,9 +585,9 @@ body {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #ffffff;
-    border: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    background: inherit;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulse 2s ease-in-out infinite;
     transform-origin: center;
 }
@@ -1102,8 +1152,14 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.9; 
+        transform: scale(1.02);
+    }
 }
 
 /* Dark mode support */

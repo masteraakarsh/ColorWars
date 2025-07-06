@@ -6,16 +6,12 @@ class ColorWarsGame {
         this.playerColors = {
             2: ['red', 'blue'],
             3: ['red', 'blue', 'green'],
-            4: ['red', 'blue', 'green', 'yellow'],
-            5: ['red', 'blue', 'green', 'yellow', 'purple'],
-            6: ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
+            4: ['red', 'blue', 'green', 'yellow']
         };
         this.boardSizeMap = {
             2: 5,  // 2 players: 5x5 board
             3: 6,  // 3 players: 6x6 board
-            4: 7,  // 4 players: 7x7 board
-            5: 8,  // 5 players: 8x8 board
-            6: 9   // 6 players: 9x9 board
+            4: 7   // 4 players: 7x7 board
         };
         this.boardSize = this.boardSizeMap[this.playerCount];
         this.board = [];
@@ -35,8 +31,36 @@ class ColorWarsGame {
         this.isOnlineGame = false;
         this.previousPlayerCount = 2; // Store previous player count for mode switching
         
+        // Check if server is available for online play
+        this.serverAvailable = this.checkServerAvailability();
+        
         this.initializeGame();
         this.setupEventListeners();
+    }
+
+    checkServerAvailability() {
+        // Check if we're on GitHub Pages or similar static hosting
+        const hostname = window.location.hostname;
+        const isStaticHosting = hostname.includes('github.io') || 
+                               hostname.includes('netlify.app') || 
+                               hostname.includes('vercel.app') ||
+                               window.location.protocol === 'file:';
+        
+        if (isStaticHosting) {
+            // Disable online multiplayer option
+            setTimeout(() => {
+                const gameModeSelect = document.getElementById('game-mode');
+                if (gameModeSelect) {
+                    const onlineOption = gameModeSelect.querySelector('option[value="online"]');
+                    if (onlineOption) {
+                        onlineOption.disabled = true;
+                        onlineOption.textContent = 'Online Multiplayer (Server Required)';
+                    }
+                }
+            }, 100);
+            return false;
+        }
+        return true;
     }
 
     setPlayerCount(count) {
@@ -394,17 +418,100 @@ class ColorWarsGame {
         turnIndicator.textContent = `${playerName}'s Turn`;
         turnIndicator.className = `turn-indicator color-${this.currentPlayer}`;
         
+        // Add turn alert animation
+        this.showTurnAlert(playerName);
+        
         // Update player cards
         for (let i = 0; i < this.playerCount; i++) {
             const player = this.players[i];
             const playerCard = document.getElementById(`player${i + 1}-card`);
             if (playerCard) {
-                playerCard.classList.toggle('active', this.currentPlayer === player);
+                const isActive = this.currentPlayer === player;
+                playerCard.classList.toggle('active', isActive);
+                
+                // Add pulse animation to active player
+                if (isActive) {
+                    playerCard.style.animation = 'pulse 1.5s ease-in-out infinite';
+                } else {
+                    playerCard.style.animation = '';
+                }
             }
         }
         
         // Update game status
         this.updateGameStatus();
+    }
+
+    showTurnAlert(playerName) {
+        // Don't show alerts for the first move or if animations are disabled
+        if (this.moveHistory.length === 0 || !this.animationEnabled) return;
+        
+        // Add turn alert animation to turn indicator
+        const turnIndicator = document.querySelector('.turn-indicator');
+        turnIndicator.classList.add('turn-changed');
+        
+        // Remove the animation class after it completes
+        setTimeout(() => {
+            turnIndicator.classList.remove('turn-changed');
+        }, 1000);
+        
+        // Show turn notification popup
+        this.showTurnNotification(playerName);
+        
+        // Play turn sound
+        if (this.soundEnabled) {
+            this.playTurnSound();
+        }
+    }
+
+    showTurnNotification(playerName) {
+        // Remove any existing notification
+        const existingNotification = document.querySelector('.turn-notification');
+        if (existingNotification) {
+            existingNotification.remove();
+        }
+        
+        // Create new notification
+        const notification = document.createElement('div');
+        notification.className = 'turn-notification';
+        notification.textContent = `${playerName}'s Turn!`;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Show notification
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 100);
+        
+        // Hide notification after 2 seconds
+        setTimeout(() => {
+            notification.classList.add('hide');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 500);
+        }, 2000);
+    }
+
+    playTurnSound() {
+        // Play a subtle notification sound
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.15);
     }
 
     updateGameStatus() {

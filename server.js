@@ -36,16 +36,12 @@ class GameRoom {
         this.playerColors = {
             2: ['red', 'blue'],
             3: ['red', 'blue', 'green'],
-            4: ['red', 'blue', 'green', 'yellow'],
-            5: ['red', 'blue', 'green', 'yellow', 'purple'],
-            6: ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
+            4: ['red', 'blue', 'green', 'yellow']
         };
         this.boardSizeMap = {
             2: 5,  // 2 players: 5x5 board
             3: 6,  // 3 players: 6x6 board
-            4: 7,  // 4 players: 7x7 board
-            5: 8,  // 5 players: 8x8 board
-            6: 9   // 6 players: 9x9 board
+            4: 7   // 4 players: 7x7 board
         };
         this.gameState = {
             board: null,
