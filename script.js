@@ -25,11 +25,17 @@ class ColorWarsGame {
         this.isAnimating = false;
         this.aiDifficulty = 'medium';
         
+        // Timer properties
+        this.turnTimer = null;
+        this.timeLeft = 30;
+        this.timerEnabled = true;
+        
         // Player information
         this.playerNames = {};
         this.connectedPlayers = {};
         this.isOnlineGame = false;
         this.previousPlayerCount = 2; // Store previous player count for mode switching
+        this.isHost = false; // Track if current player is the host
         
         // Check if server is available for online play
         this.serverAvailable = this.checkServerAvailability();
@@ -64,8 +70,8 @@ class ColorWarsGame {
     }
 
     setPlayerCount(count) {
-        if (count < 2 || count > 6) {
-            console.error('Player count must be between 2 and 6');
+        if (count < 2 || count > 4) {
+            console.error('Player count must be between 2 and 4');
             return;
         }
         
@@ -112,6 +118,7 @@ class ColorWarsGame {
         this.updatePlayerCardsVisibility();
         this.updateUI();
         this.resetPlayerStats();
+        this.startTimer(); // Start timer for first player
     }
 
     createBoard() {
@@ -141,6 +148,13 @@ class ColorWarsGame {
 
     renderBoard() {
         const boardElement = document.getElementById('game-board');
+        
+        // Clear any lingering animation classes before destroying the board
+        const allDots = boardElement.querySelectorAll('.dot');
+        allDots.forEach(dot => {
+            dot.classList.remove('expanding');
+        });
+        
         boardElement.innerHTML = '';
         boardElement.className = `game-board size-${this.boardSize}`;
 
@@ -242,6 +256,9 @@ class ColorWarsGame {
     }
 
     async makeMove(row, col, player) {
+        // Stop the timer when a move is made
+        this.stopTimer();
+        
         // Check if this is a first move for this player
         const playerMoves = this.moveHistory.filter(move => move.player === player);
         const isFirstMove = playerMoves.length === 0;
@@ -278,8 +295,8 @@ class ColorWarsGame {
         // Play sound effect
         this.playSound('place');
 
-        // Check for explosion
-        if (this.board[row][col].dots >= this.board[row][col].maxDots) {
+        // Check for explosion (but not on first moves)
+        if (!isFirstMove && this.board[row][col].dots >= this.board[row][col].maxDots) {
             await this.explode(row, col, player);
         }
 
@@ -292,7 +309,19 @@ class ColorWarsGame {
             const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
             if (cellElement) {
                 const dots = cellElement.querySelectorAll('.dot');
-                dots.forEach(dot => dot.classList.add('expanding'));
+                
+                // First clear any existing expanding classes to prevent conflicts
+                dots.forEach(dot => dot.classList.remove('expanding'));
+                
+                // Then add expanding animation after a small delay
+                setTimeout(() => {
+                    dots.forEach(dot => dot.classList.add('expanding'));
+                    
+                    // Remove expanding class after animation completes
+                    setTimeout(() => {
+                        dots.forEach(dot => dot.classList.remove('expanding'));
+                    }, 600); // Slightly longer than the longest CSS animation duration to ensure cleanup
+                }, 10);
             }
         }, 100);
 
@@ -318,13 +347,14 @@ class ColorWarsGame {
         
         this.playSound('explode');
         
-        // Wait for animation
-        await this.delay(300);
+        // Wait for explosion animation
+        await this.delay(400);
         
         // Get adjacent cells
         const adjacentCells = this.getAdjacentCells(row, col);
-        const explosionPromises = [];
+        const chainReactionCells = [];
         
+        // First, update all adjacent cells and identify which ones will chain explode
         for (const [adjRow, adjCol] of adjacentCells) {
             // Convert cell to current player's color and add dot
             this.board[adjRow][adjCol].owner = player;
@@ -336,19 +366,37 @@ class ColorWarsGame {
             
             // Check if this cell should explode
             if (this.board[adjRow][adjCol].dots >= this.board[adjRow][adjCol].maxDots) {
-                explosionPromises.push(this.explode(adjRow, adjCol, player));
+                chainReactionCells.push([adjRow, adjCol]);
             }
         }
         
-        // Wait for all chain reactions to complete
-        await Promise.all(explosionPromises);
+        // Update the board visualization to show the dots spreading
+        this.renderBoard();
         
-        // Remove animation classes
+        // Wait for chain reaction animation
+        await this.delay(300);
+        
+        // Remove explosion animation from original cell
         cellElement.classList.remove('exploding');
+        
+        // Remove chain reaction animations
         adjacentCells.forEach(([adjRow, adjCol]) => {
             const adjCellElement = document.querySelector(`[data-row="${adjRow}"][data-col="${adjCol}"]`);
             adjCellElement.classList.remove('chain-reaction');
         });
+        
+        // Now process chain explosions one by one with delays
+        for (let i = 0; i < chainReactionCells.length; i++) {
+            const [chainRow, chainCol] = chainReactionCells[i];
+            
+            // Add a small delay between chain explosions for visual clarity
+            if (i > 0) {
+                await this.delay(200);
+            }
+            
+            // Recursively explode this cell
+            await this.explode(chainRow, chainCol, player);
+        }
         
         this.isAnimating = false;
     }
@@ -409,6 +457,7 @@ class ColorWarsGame {
         this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.playerCount;
         this.currentPlayer = this.players[this.currentPlayerIndex];
         this.updateUI();
+        this.startTimer(); // Start timer for next player
     }
 
     updateUI() {
@@ -601,6 +650,7 @@ class ColorWarsGame {
 
     endGame(winner) {
         this.gameState = 'ended';
+        this.stopTimer(); // Stop timer when game ends
         
         this.playSound('win');
         
@@ -609,7 +659,18 @@ class ColorWarsGame {
         const winMessage = document.getElementById('win-message');
         const winStats = document.getElementById('win-stats');
         
-        const winnerName = winner.charAt(0).toUpperCase() + winner.slice(1) + ' Player';
+        // Get winner name based on game mode
+        let winnerName;
+        if (this.isOnlineGame && this.connectedPlayers[winner]) {
+            winnerName = this.connectedPlayers[winner].name;
+            // Remove "(You)" suffix for display in win modal
+            winnerName = winnerName.replace(' (You)', '');
+        } else if (this.gameMode === 'ai' && winner === this.players[1]) {
+            winnerName = 'Computer';
+        } else {
+            winnerName = this.playerNames[winner] || `${winner.charAt(0).toUpperCase() + winner.slice(1)} Player`;
+        }
+        
         winMessage.textContent = `${winnerName} Wins!`;
         winMessage.className = `color-${winner}`;
         
@@ -617,8 +678,17 @@ class ColorWarsGame {
         let statsHTML = `<div>Total Moves: ${this.moveHistory.length}</div>`;
         for (let player of this.players) {
             const cellCount = this.countPlayerCells(player);
-            const playerName = player.charAt(0).toUpperCase() + player.slice(1);
-            statsHTML += `<div>${playerName} Cells: ${cellCount}</div>`;
+            let playerDisplayName;
+            
+            if (this.isOnlineGame && this.connectedPlayers[player]) {
+                playerDisplayName = this.connectedPlayers[player].name.replace(' (You)', '');
+            } else if (this.gameMode === 'ai' && player === this.players[1]) {
+                playerDisplayName = 'Computer';
+            } else {
+                playerDisplayName = this.playerNames[player] || `${player.charAt(0).toUpperCase() + player.slice(1)} Player`;
+            }
+            
+            statsHTML += `<div>${playerDisplayName} Cells: ${cellCount}</div>`;
         }
         
         winStats.innerHTML = statsHTML;
@@ -635,6 +705,9 @@ class ColorWarsGame {
         this.moveHistory = [];
         this.isAnimating = false;
         
+        // Clear any lingering animations
+        this.clearAllAnimations();
+        
         document.getElementById('undo-btn').disabled = true;
         
         // Initialize player names for new game
@@ -647,6 +720,7 @@ class ColorWarsGame {
         this.updatePlayerCardsVisibility();
         this.updateUI();
         this.resetPlayerStats();
+        this.startTimer(); // Start timer for new game
         
         // Hide win modal
         document.getElementById('win-modal').style.display = 'none';
@@ -728,9 +802,13 @@ class ColorWarsGame {
         }
         
         // Otherwise, prefer moves near opponent cells
+        const aiPlayer = this.players[1]; // AI player
         const strategicMoves = validMoves.filter(move => {
             const adjacent = this.getAdjacentCells(move.row, move.col);
-            return adjacent.some(([r, c]) => this.board[r][c].owner === 'red');
+            return adjacent.some(([r, c]) => {
+                const cell = this.board[r][c];
+                return cell.owner !== null && cell.owner !== aiPlayer;
+            });
         });
         
         if (strategicMoves.length > 0) {
@@ -744,9 +822,10 @@ class ColorWarsGame {
         // Evaluate each move and choose the best one
         let bestMove = null;
         let bestScore = -Infinity;
+        const aiPlayer = this.players[1]; // AI player
         
         for (const move of validMoves) {
-            const score = this.evaluateMove(move, 'blue');
+            const score = this.evaluateMove(move, aiPlayer);
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
@@ -763,9 +842,19 @@ class ColorWarsGame {
         
         this.board = boardCopy;
         
+        // Check if this is a first move for this player
+        const playerMoves = this.moveHistory.filter(m => m.player === player);
+        const isFirstMove = playerMoves.length === 0;
+        
         // Simulate the move
         this.board[move.row][move.col].owner = player;
-        this.board[move.row][move.col].dots++;
+        
+        // First move for each player starts with 3 dots
+        if (isFirstMove) {
+            this.board[move.row][move.col].dots = 3;
+        } else {
+            this.board[move.row][move.col].dots++;
+        }
         
         // Simulate explosions
         this.simulateExplosions(move.row, move.col, player);
@@ -797,14 +886,14 @@ class ColorWarsGame {
 
     calculateBoardScore(player) {
         let score = 0;
-        const opponent = player === 'red' ? 'blue' : 'red';
         
         for (let row = 0; row < this.boardSize; row++) {
             for (let col = 0; col < this.boardSize; col++) {
                 const cell = this.board[row][col];
                 if (cell.owner === player) {
                     score += cell.dots + 1;
-                } else if (cell.owner === opponent) {
+                } else if (cell.owner !== null && cell.owner !== player) {
+                    // Any opponent cell reduces the score
                     score -= cell.dots + 1;
                 }
             }
@@ -869,6 +958,110 @@ class ColorWarsGame {
     // Utility function for delays
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Timer methods
+    startTimer() {
+        if (!this.timerEnabled || this.gameState !== 'playing') return;
+        
+        this.stopTimer(); // Clear any existing timer
+        this.timeLeft = 30;
+        this.updateTimerDisplay();
+        
+        this.turnTimer = setInterval(() => {
+            this.timeLeft--;
+            this.updateTimerDisplay();
+            
+            if (this.timeLeft <= 0) {
+                this.onTimerExpired();
+            }
+        }, 1000);
+    }
+
+    stopTimer() {
+        if (this.turnTimer) {
+            clearInterval(this.turnTimer);
+            this.turnTimer = null;
+        }
+    }
+
+    resetTimer() {
+        this.timeLeft = 30;
+        this.updateTimerDisplay();
+    }
+
+    updateTimerDisplay() {
+        const timerDisplay = document.getElementById('timer-display');
+        const timerContainer = document.getElementById('timer-container');
+        
+        if (timerDisplay) {
+            timerDisplay.textContent = this.timeLeft;
+            
+            // Add warning style when time is running out
+            if (this.timeLeft <= 10) {
+                timerContainer.classList.add('timer-warning');
+            } else {
+                timerContainer.classList.remove('timer-warning');
+            }
+            
+            // Add critical style when time is almost out
+            if (this.timeLeft <= 5) {
+                timerContainer.classList.add('timer-critical');
+            } else {
+                timerContainer.classList.remove('timer-critical');
+            }
+        }
+    }
+
+    onTimerExpired() {
+        this.stopTimer();
+        
+        // In AI mode, don't expire timer for AI player
+        if (this.gameMode === 'ai' && this.currentPlayer === this.players[1]) {
+            return;
+        }
+        
+        // Force a random move for the current player
+        this.makeRandomMove();
+    }
+
+    makeRandomMove() {
+        const validMoves = this.getValidMoves(this.currentPlayer);
+        
+        if (validMoves.length > 0) {
+            // Pick a random valid move
+            const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+            
+            // Show timeout message
+            this.showTimeoutMessage();
+            
+            // Make the move after a short delay
+            setTimeout(() => {
+                this.makeMove(randomMove.row, randomMove.col, this.currentPlayer);
+            }, 1000);
+        } else {
+            // No valid moves available - this shouldn't happen in normal gameplay
+            this.switchPlayer();
+        }
+    }
+
+    showTimeoutMessage() {
+        const playerName = this.playerNames[this.currentPlayer] || 
+                          (this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1) + ' Player');
+        
+        // Create timeout notification
+        const notification = document.createElement('div');
+        notification.className = 'timeout-notification';
+        notification.textContent = `${playerName} ran out of time! Making random move...`;
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 3000);
     }
 
     // Settings Management
@@ -1007,8 +1200,9 @@ class ColorWarsGame {
         
         document.getElementById('create-room-btn').addEventListener('click', () => {
             const playerName = document.getElementById('create-player-name').value.trim();
+            const playerColor = document.getElementById('create-player-color').value;
             if (playerName) {
-                this.createRoom(playerName);
+                this.createRoom(playerName, playerColor);
             } else {
                 alert('Please enter your name');
             }
@@ -1016,24 +1210,34 @@ class ColorWarsGame {
         
         document.getElementById('join-room-btn').addEventListener('click', () => {
             const playerName = document.getElementById('join-player-name').value.trim();
+            const playerColor = document.getElementById('join-player-color').value;
             const roomId = document.getElementById('room-id-input').value.trim();
             if (playerName && roomId) {
-                this.joinRoom(playerName, roomId);
+                this.joinRoom(playerName, roomId, playerColor);
             } else {
                 alert('Please enter your name and room ID');
             }
         });
-        
+
         document.getElementById('copy-room-id').addEventListener('click', () => {
             const roomId = document.getElementById('current-room-id').textContent;
             navigator.clipboard.writeText(roomId).then(() => {
-                const button = document.getElementById('copy-room-id');
-                const originalText = button.textContent;
-                button.textContent = 'Copied!';
+                const btn = document.getElementById('copy-room-id');
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
                 setTimeout(() => {
-                    button.textContent = originalText;
+                    btn.textContent = originalText;
                 }, 2000);
+            }).catch(() => {
+                alert('Failed to copy room ID. Please copy it manually: ' + roomId);
             });
+        });
+        
+        // Add event listener for waiting room color selection (will be added dynamically)
+        document.addEventListener('change', (event) => {
+            if (event.target.id === 'waiting-room-color') {
+                this.handleWaitingRoomColorChange(event.target.value);
+            }
         });
         
         // Close modals when clicking outside
@@ -1091,7 +1295,7 @@ class ColorWarsGame {
 
     showPlayerNamesModal() {
         if (this.isOnlineGame) {
-            alert('Player names are automatically set in online games');
+            alert('Color selection is only available in the waiting room for online games');
             return;
         }
         
@@ -1100,11 +1304,19 @@ class ColorWarsGame {
             return;
         }
         
+        if (this.gameState === 'playing') {
+            alert('Color selection is only available when the game is not in progress');
+            return;
+        }
+        
         const modal = document.getElementById('player-names-modal');
         const inputsContainer = document.getElementById('player-name-inputs');
         
         // Clear existing inputs
         inputsContainer.innerHTML = '';
+        
+        // Available colors for selection
+        const allColors = ['red', 'blue', 'green', 'yellow'];
         
         // Create input for each player
         for (let i = 0; i < this.playerCount; i++) {
@@ -1117,39 +1329,222 @@ class ColorWarsGame {
             const colorIndicator = document.createElement('div');
             colorIndicator.className = `player-color-indicator player-${color}`;
             
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'player-name-input';
-            input.placeholder = `${color.charAt(0).toUpperCase() + color.slice(1)} Player`;
-            input.value = playerInfo ? playerInfo.name.replace(' (You)', '') : '';
-            input.maxLength = 20;
-            input.dataset.color = color;
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'player-name-input';
+            nameInput.placeholder = `${color.charAt(0).toUpperCase() + color.slice(1)} Player`;
+            nameInput.value = playerInfo ? playerInfo.name.replace(' (You)', '') : '';
+            nameInput.maxLength = 20;
+            nameInput.dataset.color = color;
+            nameInput.dataset.playerIndex = i;
+            
+            const colorSelect = document.createElement('select');
+            colorSelect.className = 'player-color-select';
+            colorSelect.dataset.playerIndex = i;
+            colorSelect.dataset.originalColor = color;
+            
+            // Add options for all colors
+            allColors.forEach(colorOption => {
+                const option = document.createElement('option');
+                option.value = colorOption;
+                option.textContent = colorOption.charAt(0).toUpperCase() + colorOption.slice(1);
+                option.selected = colorOption === color;
+                colorSelect.appendChild(option);
+            });
+            
+            // Add event listener for color change
+            colorSelect.addEventListener('change', (e) => {
+                this.handleColorChange(e.target);
+            });
             
             inputGroup.appendChild(colorIndicator);
-            inputGroup.appendChild(input);
+            inputGroup.appendChild(nameInput);
+            inputGroup.appendChild(colorSelect);
             inputsContainer.appendChild(inputGroup);
         }
         
         modal.style.display = 'block';
     }
 
+    handleColorChange(selectElement) {
+        const playerIndex = parseInt(selectElement.dataset.playerIndex);
+        const newColor = selectElement.value;
+        const oldColor = selectElement.dataset.originalColor;
+        
+        // Update the color indicator
+        const colorIndicator = selectElement.parentElement.querySelector('.player-color-indicator');
+        colorIndicator.className = `player-color-indicator player-${newColor}`;
+        
+        // Update the player's name input dataset
+        const nameInput = selectElement.parentElement.querySelector('.player-name-input');
+        nameInput.dataset.color = newColor;
+        
+        // Update the original color reference
+        selectElement.dataset.originalColor = newColor;
+        
+        // Disable the selected color in other dropdowns
+        this.updateColorDropdowns();
+    }
+
+    updateColorDropdowns() {
+        const colorSelects = document.querySelectorAll('.player-color-select');
+        const selectedColors = Array.from(colorSelects).map(select => select.value);
+        
+        colorSelects.forEach(select => {
+            const currentValue = select.value;
+            const options = select.querySelectorAll('option');
+            
+            options.forEach(option => {
+                // Disable if color is selected by another player
+                option.disabled = selectedColors.includes(option.value) && option.value !== currentValue;
+            });
+        });
+    }
+
     savePlayerNames() {
         const inputs = document.querySelectorAll('.player-name-input');
+        const colorSelects = document.querySelectorAll('.player-color-select');
         
-        inputs.forEach(input => {
-            const color = input.dataset.color;
+        // Get new color arrangement
+        const newColors = Array.from(colorSelects).map(select => select.value);
+        const newPlayerNames = {};
+        const newConnectedPlayers = {};
+        
+        inputs.forEach((input, index) => {
+            const color = newColors[index];
             const name = input.value.trim() || `${color.charAt(0).toUpperCase() + color.slice(1)} Player`;
             
-            if (this.connectedPlayers[color]) {
-                this.connectedPlayers[color].name = name;
-            }
+            newPlayerNames[color] = name;
+            newConnectedPlayers[color] = {
+                name: name,
+                color: color,
+                connected: true
+            };
         });
+        
+        // Update game state with new colors
+        this.players = newColors;
+        this.playerNames = newPlayerNames;
+        this.connectedPlayers = newConnectedPlayers;
+        
+        // If current player's color changed, update current player
+        if (!newColors.includes(this.currentPlayer)) {
+            this.currentPlayer = newColors[this.currentPlayerIndex];
+        }
+        
+        // Update board with new colors (if game is in progress)
+        if (this.moveHistory.length > 0) {
+            this.updateBoardColors();
+        }
         
         // Update UI
         this.updatePlayerCardsVisibility();
+        this.updateUI();
+        this.renderBoard();
         
         // Close modal
         document.getElementById('player-names-modal').style.display = 'none';
+    }
+
+    updateBoardColors() {
+        // This is a complex operation - we need to map old colors to new colors
+        // For now, we'll just reset the game if colors are changed mid-game
+        if (this.moveHistory.length > 0) {
+            const confirmed = confirm('Changing colors will reset the current game. Continue?');
+            if (confirmed) {
+                this.newGame();
+            }
+        }
+    }
+
+    handleWaitingRoomColorChange(newColor) {
+        if (!this.isOnlineGame || !this.socket) return;
+        
+        // Check if color is already taken (client-side validation)
+        const takenColors = Object.values(this.connectedPlayers)
+            .filter(player => player.connected && player.color !== this.playerColor)
+            .map(player => player.color);
+            
+        if (takenColors.includes(newColor)) {
+            alert('This color is already taken by another player');
+            // Reset to current color
+            document.getElementById('waiting-room-color').value = this.playerColor;
+            return;
+        }
+        
+        // Store the attempted color change in case we need to revert
+        const previousColor = this.playerColor;
+        
+        // Emit color change to server
+        this.socket.emit('changeColor', { newColor });
+        
+        // Set up a temporary error handler for this color change
+        const errorHandler = (data) => {
+            if (data.message && data.message.includes('color')) {
+                // This is likely a color-related error, revert the dropdown
+                const colorSelect = document.getElementById('waiting-room-color');
+                if (colorSelect) {
+                    colorSelect.value = previousColor;
+                }
+                alert('Color change failed: ' + data.message);
+            }
+        };
+        
+        // Listen for errors temporarily
+        this.socket.once('error', errorHandler);
+        
+        // Remove the error handler after a short delay (in case the change succeeds)
+        setTimeout(() => {
+            this.socket.off('error', errorHandler);
+        }, 1000);
+    }
+
+    updateWaitingRoomDisplay() {
+        const playerList = document.getElementById('waiting-room-player-list');
+        const myColorSelect = document.getElementById('waiting-room-color');
+        
+        if (!playerList || !myColorSelect) return;
+        
+        // Clear existing player list
+        playerList.innerHTML = '';
+        
+        // Add all connected players to the list
+        Object.values(this.connectedPlayers).forEach(player => {
+            const playerItem = document.createElement('div');
+            playerItem.className = 'waiting-room-player-item';
+            
+            const colorIndicator = document.createElement('div');
+            colorIndicator.className = `waiting-room-player-color player-${player.color}`;
+            
+            const playerName = document.createElement('div');
+            playerName.className = 'waiting-room-player-name';
+            playerName.textContent = player.name;
+            
+            const statusIndicator = document.createElement('div');
+            statusIndicator.className = 'waiting-room-player-status';
+            statusIndicator.textContent = player.connected ? '✓' : '...';
+            statusIndicator.style.color = player.connected ? '#2ed573' : '#999';
+            
+            playerItem.appendChild(colorIndicator);
+            playerItem.appendChild(playerName);
+            playerItem.appendChild(statusIndicator);
+            playerList.appendChild(playerItem);
+        });
+        
+        // Update my color selection dropdown
+        if (this.playerColor) {
+            myColorSelect.value = this.playerColor;
+            
+            // Update available options (disable taken colors)
+            const takenColors = Object.values(this.connectedPlayers)
+                .filter(player => player.connected && player.color !== this.playerColor)
+                .map(player => player.color);
+                
+            const options = myColorSelect.querySelectorAll('option');
+            options.forEach(option => {
+                option.disabled = takenColors.includes(option.value);
+            });
+        }
     }
 
     // Multiplayer functionality
@@ -1196,8 +1591,24 @@ class ColorWarsGame {
             this.handlePlayerJoined(data);
         });
 
+        this.socket.on('playerDisconnected', (data) => {
+            this.handlePlayerDisconnected(data);
+        });
+
+        this.socket.on('roomReady', (data) => {
+            this.handleRoomReady(data);
+        });
+
+        this.socket.on('gameStarted', (data) => {
+            this.handleGameStarted(data);
+        });
+
         this.socket.on('moveMade', (data) => {
             this.handleOnlineMove(data);
+        });
+
+        this.socket.on('colorChanged', (data) => {
+            this.handleColorChanged(data);
         });
 
         this.socket.on('error', (data) => {
@@ -1219,6 +1630,7 @@ class ColorWarsGame {
         this.currentRoomId = data.roomId;
         this.playerColor = data.player.color;
         this.isOnlineGame = true;
+        this.isHost = data.player.isHost;
         
         // Initialize connected players
         this.connectedPlayers = {};
@@ -1241,30 +1653,65 @@ class ColorWarsGame {
         }
         
         this.updatePlayerCardsVisibility();
+        this.updateHostUI();
+        this.updateWaitingRoomDisplay();
     }
 
     handleRoomJoined(data) {
         this.currentRoomId = data.roomId;
         this.playerColor = data.player.color;
         this.isOnlineGame = true;
+        this.isHost = data.player.isHost;
         
         // Update player information from game state
         this.updateConnectedPlayersFromGameState(data.gameState);
         
-        // Start the game
-        this.startOnlineGame(data.gameState);
+        // Check if game is ready to start or already started
+        if (data.gameState.gameStatus === 'playing') {
+            this.startOnlineGame(data.gameState);
+        } else {
+            // Show waiting room
+            this.showWaitingRoom(data.gameState);
+        }
     }
 
     handlePlayerJoined(data) {
         // Update connected players information
         this.updateConnectedPlayersFromGameState(data.gameState);
         
+        // Update host status if necessary
+        if (data.gameState.hostId && data.gameState.hostId === this.socket.id) {
+            this.isHost = true;
+        }
+        
+        // Show notification that a player joined
+        this.showPlayerJoinedNotification(data.player);
+        
         if (data.gameState.gameStatus === 'playing') {
             this.startOnlineGame(data.gameState);
         } else {
             // Update UI to show new player joined
             this.updatePlayerCardsVisibility();
+            this.updateHostUI();
+            this.updateWaitingRoomDisplay();
         }
+    }
+
+    handleColorChanged(data) {
+        // Update the player's color in connected players
+        this.updateConnectedPlayersFromGameState(data.gameState);
+        
+        // If this is my color change, update my player color
+        if (data.playerId === this.socket.id) {
+            this.playerColor = data.newColor;
+        }
+        
+        // Update the waiting room display
+        this.updateWaitingRoomDisplay();
+        
+        // Show notification about color change
+        const playerName = this.connectedPlayers[data.newColor]?.name || 'A player';
+        this.showTurnNotification(`${playerName} changed to ${data.newColor}`, 'player-joined');
     }
 
     startOnlineGame(gameState) {
@@ -1345,9 +1792,13 @@ class ColorWarsGame {
         this.currentPlayer = data.gameState.currentPlayer;
         this.moveHistory = data.gameState.moveHistory;
         
+        // Clean up any animation states before updating
+        this.clearAllAnimations();
+        
         if (data.gameState.gameStatus === 'ended') {
             this.gameState = 'ended';
-            this.endGame();
+            this.showGameWinNotification(data.gameState.winner);
+            this.endGame(data.gameState.winner);
         } else {
             this.renderBoard();
             this.updateUI();
@@ -1363,10 +1814,11 @@ class ColorWarsGame {
         this.socket.emit('makeMove', { row, col });
     }
 
-    createRoom(playerName) {
+    createRoom(playerName, playerColor) {
         if (this.socket && this.socket.connected) {
             this.socket.emit('createRoom', { 
                 playerName: playerName,
+                playerColor: playerColor || 'blue',
                 playerCount: this.playerCount
             });
         } else {
@@ -1374,12 +1826,156 @@ class ColorWarsGame {
         }
     }
 
-    joinRoom(playerName, roomId) {
+    joinRoom(playerName, roomId, playerColor) {
         if (this.socket && this.socket.connected) {
-            this.socket.emit('joinRoom', { playerName, roomId });
+            this.socket.emit('joinRoom', { 
+                playerName, 
+                roomId, 
+                playerColor: playerColor || 'yellow' 
+            });
         } else {
             alert('Not connected to server. Please try again.');
         }
+    }
+
+    showPlayerJoinedNotification(player) {
+        // Don't show notification for yourself
+        if (player.color === this.playerColor) {
+            return;
+        }
+        
+        // Create notification message
+        const playerName = player.name || `${player.color.charAt(0).toUpperCase() + player.color.slice(1)} Player`;
+        const message = `${playerName} joined the game!`;
+        
+        // Show turn notification (reusing the existing turn notification system)
+        this.showTurnNotification(message, 'player-joined');
+        
+        // Play sound
+        this.playSound('place');
+    }
+
+    showGameWinNotification(winner) {
+        if (!winner) return;
+        
+        // Get winner name
+        const winnerInfo = this.connectedPlayers[winner];
+        const winnerName = winnerInfo ? winnerInfo.name : `${winner.charAt(0).toUpperCase() + winner.slice(1)} Player`;
+        
+        // Create win message
+        let message;
+        if (winner === this.playerColor) {
+            message = `🎉 You won! 🎉`;
+        } else {
+            message = `${winnerName} wins the game!`;
+        }
+        
+        // Show notification
+        this.showTurnNotification(message, 'game-won');
+        
+        // Play win sound
+        this.playSound('win');
+    }
+
+    handlePlayerDisconnected(data) {
+        // Update connected players information
+        this.updateConnectedPlayersFromGameState(data.gameState);
+        
+        // Show notification that a player disconnected
+        this.showTurnNotification('A player disconnected from the game', 'player-left');
+        
+        // Update UI
+        this.updatePlayerCardsVisibility();
+    }
+
+    handleRoomReady(data) {
+        this.updateConnectedPlayersFromGameState(data.gameState);
+        this.updateHostUI();
+        
+        if (this.isHost) {
+            this.showTurnNotification('🎮 All players joined! You can start the game.', 'game-started');
+        } else {
+            this.showTurnNotification('⏳ Waiting for host to start the game...', 'game-started');
+        }
+    }
+
+    showWaitingRoom(gameState) {
+        // Close the multiplayer modal
+        document.getElementById('multiplayer-modal').style.display = 'none';
+        
+        // Set up waiting room state
+        this.gameMode = 'online';
+        this.gameState = 'waiting';
+        this.playerCount = gameState.playerCount;
+        this.players = gameState.players;
+        
+        // Update connected players information
+        this.updateConnectedPlayersFromGameState(gameState);
+        
+        // Update UI
+        this.updatePlayerCardsVisibility();
+        this.updateHostUI();
+        this.updateWaitingRoomDisplay();
+    }
+
+    updateHostUI() {
+        // Add or remove start game button based on host status and room state
+        const existingButton = document.getElementById('start-game-btn');
+        
+        if (this.isHost && this.gameState === 'waiting' && this.isOnlineGame) {
+            if (!existingButton) {
+                const startButton = document.createElement('button');
+                startButton.id = 'start-game-btn';
+                startButton.className = 'btn btn-primary';
+                startButton.textContent = 'Start Game';
+                startButton.onclick = () => this.startGame();
+                
+                const gameControls = document.querySelector('.game-controls');
+                gameControls.appendChild(startButton);
+            }
+        } else {
+            if (existingButton) {
+                existingButton.remove();
+            }
+        }
+    }
+
+    startGame() {
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('startGame');
+        } else {
+            alert('Not connected to server. Please try again.');
+        }
+    }
+
+    handleGameStarted(data) {
+        // Show notification that the game has started
+        this.showTurnNotification('🎮 Game Started! All players joined!', 'game-started');
+        
+        // Play sound
+        this.playSound('place');
+        
+        // Remove start game button if it exists
+        const startButton = document.getElementById('start-game-btn');
+        if (startButton) {
+            startButton.remove();
+        }
+        
+        // Start the actual game
+        this.startOnlineGame(data.gameState);
+    }
+
+    clearAllAnimations() {
+        // Remove all animation classes from dots and cells
+        const allDots = document.querySelectorAll('.dot');
+        allDots.forEach(dot => {
+            dot.classList.remove('expanding');
+        });
+        
+        const allCells = document.querySelectorAll('.cell');
+        allCells.forEach(cell => {
+            cell.classList.remove('exploding', 'chain-reaction', 'placing-dot');
+        });
     }
 }
 

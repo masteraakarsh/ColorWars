@@ -33,6 +33,7 @@ class GameRoom {
         this.id = roomId;
         this.players = [];
         this.playerCount = playerCount;
+        this.hostId = null; // Track who is the host
         this.playerColors = {
             2: ['red', 'blue'],
             3: ['red', 'blue', 'green'],
@@ -47,30 +48,57 @@ class GameRoom {
             board: null,
             currentPlayerIndex: 0,
             currentPlayer: this.playerColors[this.playerCount][0],
-            gameStatus: 'waiting', // 'waiting', 'playing', 'ended'
+            gameStatus: 'waiting', // 'waiting', 'ready', 'playing', 'ended'
             boardSize: this.boardSizeMap[this.playerCount],
             moveHistory: [],
             playerCount: this.playerCount,
             players: this.playerColors[this.playerCount],
-            connectedPlayers: {}
+            connectedPlayers: {},
+            hostId: null
         };
         this.spectators = [];
         this.createdAt = new Date();
     }
 
-    addPlayer(socket, playerName) {
+    addPlayer(socket, playerName, requestedColor = null) {
         if (this.players.length >= this.playerCount) {
             return { success: false, message: 'Room is full' };
+        }
+
+        // Determine the player's color
+        let playerColor;
+        if (requestedColor) {
+            // Check if the requested color is valid for this player count
+            if (!this.playerColors[this.playerCount].includes(requestedColor)) {
+                return { success: false, message: 'Invalid color selection' };
+            }
+            
+            // Check if the color is already taken
+            const colorTaken = this.players.some(p => p.color === requestedColor);
+            if (colorTaken) {
+                return { success: false, message: 'This color is already taken by another player' };
+            }
+            
+            playerColor = requestedColor;
+        } else {
+            // Assign the next available color
+            playerColor = this.playerColors[this.playerCount][this.players.length];
         }
 
         const player = {
             id: socket.id,
             name: playerName,
-            color: this.playerColors[this.playerCount][this.players.length],
+            color: playerColor,
             socket: socket
         };
 
         this.players.push(player);
+        
+        // Set the first player as the host
+        if (this.players.length === 1) {
+            this.hostId = socket.id;
+            this.gameState.hostId = socket.id;
+        }
         
         // Update connected players in game state
         this.gameState.connectedPlayers[player.color] = {
@@ -79,9 +107,9 @@ class GameRoom {
             connected: true
         };
         
+        // Update game status based on player count
         if (this.players.length === this.playerCount) {
-            this.gameState.gameStatus = 'playing';
-            this.initializeBoard();
+            this.gameState.gameStatus = 'ready'; // Ready to start, but waiting for host
         }
 
         // Return player data without socket object to avoid circular reference
@@ -90,7 +118,8 @@ class GameRoom {
             player: {
                 id: player.id,
                 name: player.name,
-                color: player.color
+                color: player.color,
+                isHost: player.id === this.hostId
             }
         };
     }
@@ -108,6 +137,12 @@ class GameRoom {
                 color: removedPlayer.color,
                 connected: false
             };
+        }
+        
+        // If the host left, assign new host
+        if (this.hostId === socketId && this.players.length > 0) {
+            this.hostId = this.players[0].id;
+            this.gameState.hostId = this.hostId;
         }
         
         if (this.players.length === 0) {
@@ -136,6 +171,29 @@ class GameRoom {
                 name: spectator.name
             }
         };
+    }
+
+    startGame(playerId) {
+        // Only the host can start the game
+        if (playerId !== this.hostId) {
+            return { success: false, message: 'Only the host can start the game' };
+        }
+
+        // Check if all players are present
+        if (this.players.length !== this.playerCount) {
+            return { success: false, message: 'All players must be present to start the game' };
+        }
+
+        // Check if game is in ready state
+        if (this.gameState.gameStatus !== 'ready') {
+            return { success: false, message: 'Game is not ready to start' };
+        }
+
+        // Start the game
+        this.gameState.gameStatus = 'playing';
+        this.initializeBoard();
+
+        return { success: true, gameState: this.gameState };
     }
 
     initializeBoard() {
@@ -342,7 +400,7 @@ io.on('connection', (socket) => {
         gameRooms.set(roomId, room);
         playerRooms.set(socket.id, roomId);
         
-        const result = room.addPlayer(socket, data.playerName);
+        const result = room.addPlayer(socket, data.playerName, data.playerColor);
         
         if (result.success) {
             socket.join(roomId);
@@ -366,7 +424,7 @@ io.on('connection', (socket) => {
 
         playerRooms.set(socket.id, data.roomId);
         
-        const result = room.addPlayer(socket, data.playerName);
+        const result = room.addPlayer(socket, data.playerName, data.playerColor);
         
         if (result.success) {
             socket.join(data.roomId);
@@ -381,6 +439,13 @@ io.on('connection', (socket) => {
                 player: result.player,
                 gameState: room.gameState
             });
+            
+            // If room is ready to start, notify players
+            if (room.gameState.gameStatus === 'ready') {
+                room.broadcastToRoom('roomReady', {
+                    gameState: room.gameState
+                });
+            }
         } else {
             // Try to add as spectator
             const spectatorResult = room.addSpectator(socket, data.playerName);
@@ -394,6 +459,27 @@ io.on('connection', (socket) => {
             } else {
                 socket.emit('error', { message: result.message });
             }
+        }
+    });
+
+    // Handle host starting the game
+    socket.on('startGame', () => {
+        const roomId = playerRooms.get(socket.id);
+        const room = gameRooms.get(roomId);
+        
+        if (!room) {
+            socket.emit('error', { message: 'Room not found' });
+            return;
+        }
+
+        const result = room.startGame(socket.id);
+        
+        if (result.success) {
+            room.broadcastToRoom('gameStarted', {
+                gameState: result.gameState
+            });
+        } else {
+            socket.emit('error', { message: result.message });
         }
     });
 
@@ -417,6 +503,68 @@ io.on('connection', (socket) => {
         } else {
             socket.emit('error', { message: result.message });
         }
+    });
+
+    // Handle color change in waiting room
+    socket.on('changeColor', (data) => {
+        const roomId = playerRooms.get(socket.id);
+        const room = gameRooms.get(roomId);
+        
+        if (!room) {
+            socket.emit('error', { message: 'Room not found' });
+            return;
+        }
+
+        // Only allow color changes when game is in waiting or ready state
+        if (room.gameState.gameStatus !== 'waiting' && room.gameState.gameStatus !== 'ready') {
+            socket.emit('error', { message: 'Cannot change color during active game' });
+            return;
+        }
+
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player) {
+            socket.emit('error', { message: 'Player not found' });
+            return;
+        }
+
+        const newColor = data.newColor;
+        const oldColor = player.color;
+
+        // Check if the new color is already taken by another player
+        const colorTaken = room.players.some(p => p.id !== socket.id && p.color === newColor);
+        if (colorTaken) {
+            socket.emit('error', { message: 'This color is already taken by another player' });
+            return;
+        }
+
+        // Check if the new color is valid for this player count
+        const validColors = room.playerColors[room.playerCount];
+        if (!validColors.includes(newColor)) {
+            socket.emit('error', { message: 'Invalid color selection' });
+            return;
+        }
+
+        // Update player color
+        player.color = newColor;
+        
+        // Update connected players in game state
+        if (room.gameState.connectedPlayers[oldColor]) {
+            delete room.gameState.connectedPlayers[oldColor];
+        }
+        room.gameState.connectedPlayers[newColor] = {
+            name: player.name,
+            color: newColor,
+            connected: true
+        };
+
+        // Broadcast color change to all players in the room
+        room.broadcastToRoom('colorChanged', {
+            playerId: socket.id,
+            playerName: player.name,
+            oldColor: oldColor,
+            newColor: newColor,
+            gameState: room.gameState
+        });
     });
 
     // Handle player disconnect

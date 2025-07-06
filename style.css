@@ -302,6 +302,10 @@ body {
 .current-turn {
     margin-bottom: 20px;
     text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    justify-content: center;
 }
 
 .turn-indicator {
@@ -340,6 +344,91 @@ body {
     100% { 
         transform: scale(1);
         box-shadow: 0 0 0 rgba(255, 255, 255, 0.5);
+    }
+}
+
+/* Timer Styles */
+.timer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.timer-display {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    min-width: 60px;
+    text-align: center;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.timer-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+.timer-container.timer-warning {
+    background: rgba(255, 193, 7, 0.3);
+    border: 2px solid #ffc107;
+}
+
+.timer-container.timer-warning .timer-display {
+    color: #ffc107;
+    animation: timerPulse 1s ease-in-out infinite;
+}
+
+.timer-container.timer-critical {
+    background: rgba(255, 107, 107, 0.3);
+    border: 2px solid #ff6b6b;
+}
+
+.timer-container.timer-critical .timer-display {
+    color: #ff6b6b;
+    animation: timerPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* Timeout Notification */
+.timeout-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 107, 107, 0.95);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1rem;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    animation: slideInRight 0.3s ease-out;
+    font-family: 'Orbitron', monospace;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
     }
 }
 
@@ -389,6 +478,36 @@ body {
         transform: translateX(100%);
         opacity: 0;
     }
+}
+
+/* Player joined notification */
+.turn-notification.player-joined {
+    background: linear-gradient(135deg, #2ed573, #20bf6b);
+    border-left: 4px solid #2ed573;
+}
+
+/* Player left notification */
+.turn-notification.player-left {
+    background: linear-gradient(135deg, #ff6b6b, #ff4757);
+    border-left: 4px solid #ff6b6b;
+}
+
+/* Game started notification */
+.turn-notification.game-started {
+    background: linear-gradient(135deg, #74b9ff, #0984e3);
+    border-left: 4px solid #74b9ff;
+    font-size: 1.1rem;
+    padding: 16px 25px;
+}
+
+/* Game won notification */
+.turn-notification.game-won {
+    background: linear-gradient(135deg, #ffd700, #ffb300);
+    color: #333;
+    border-left: 4px solid #ffd700;
+    font-size: 1.2rem;
+    padding: 18px 30px;
+    font-weight: 800;
 }
 
 /* Game Board */
@@ -499,6 +618,12 @@ body {
     position: relative;
 }
 
+/* Normal grid layout dots (for flex layout) */
+.dots:not(.vertical):not(.triangle) .dot {
+    position: relative;
+    display: inline-block;
+}
+
 /* Vertical pattern for 2 dots */
 .dots.vertical {
     display: block;
@@ -590,6 +715,9 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulse 2s ease-in-out infinite;
     transform-origin: center;
+    position: absolute;
+    display: block;
+    z-index: 1;
 }
 
 .dot.expanding {
@@ -927,29 +1055,43 @@ body {
         box-shadow: 0 1px 4px rgba(0,0,0,0.3);
     }
     
+    /* Better dot container positioning for mobile */
+    .dots {
+        gap: 1px;
+        padding: 2px;
+    }
+    
     /* Adjust dot positioning for smaller cells */
     .dots.vertical .dot:nth-child(1) {
-        top: 10px;
+        top: 12px;
     }
     
     .dots.vertical .dot:nth-child(2) {
-        bottom: 10px;
+        bottom: 12px;
     }
     
     .dots.triangle .dot:nth-child(1) {
-        top: 8px;
+        top: 10px;
     }
     
     .dots.triangle .dot:nth-child(2) {
-        bottom: 8px;
+        bottom: 10px;
+        left: 30%;
+        transform: translateX(-50%);
     }
     
     .dots.triangle .dot:nth-child(3) {
-        bottom: 8px;
+        bottom: 10px;
+        right: 30%;
+        transform: translateX(50%);
     }
     
-    .dots {
-        gap: 2px;
+    /* Single dot centering for mobile */
+    .dots:not(.vertical):not(.triangle) .dot:first-child:last-child {
+        position: absolute !important;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
     }
     
     .modal-content {
@@ -974,28 +1116,41 @@ body {
         box-shadow: 0 1px 4px rgba(0,0,0,0.3);
     }
     
+    .dots {
+        gap: 1px;
+        padding: 2px;
+    }
+    
     .dots.vertical .dot:nth-child(1) {
-        top: 8px;
+        top: 10px;
     }
     
     .dots.vertical .dot:nth-child(2) {
-        bottom: 8px;
+        bottom: 10px;
     }
     
     .dots.triangle .dot:nth-child(1) {
-        top: 6px;
+        top: 8px;
     }
     
     .dots.triangle .dot:nth-child(2) {
-        bottom: 6px;
+        bottom: 8px;
+        left: 30%;
+        transform: translateX(-50%);
     }
     
     .dots.triangle .dot:nth-child(3) {
-        bottom: 6px;
+        bottom: 8px;
+        right: 30%;
+        transform: translateX(50%);
     }
     
-    .dots {
-        gap: 2px;
+    /* Single dot centering for medium mobile */
+    .dots:not(.vertical):not(.triangle) .dot:first-child:last-child {
+        position: absolute !important;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
     }
 }
 
@@ -1017,29 +1172,42 @@ body {
         box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
     
+    .dots {
+        gap: 1px;
+        padding: 1px;
+    }
+    
     /* Adjust dot positioning for very small cells */
     .dots.vertical .dot:nth-child(1) {
-        top: 7px;
+        top: 8px;
     }
     
     .dots.vertical .dot:nth-child(2) {
-        bottom: 7px;
+        bottom: 8px;
     }
     
     .dots.triangle .dot:nth-child(1) {
-        top: 5px;
+        top: 6px;
     }
     
     .dots.triangle .dot:nth-child(2) {
-        bottom: 5px;
+        bottom: 6px;
+        left: 30%;
+        transform: translateX(-50%);
     }
     
     .dots.triangle .dot:nth-child(3) {
-        bottom: 5px;
+        bottom: 6px;
+        right: 30%;
+        transform: translateX(50%);
     }
     
-    .dots {
-        gap: 1px;
+    /* Single dot centering for small mobile */
+    .dots:not(.vertical):not(.triangle) .dot:first-child:last-child {
+        position: absolute !important;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
     }
     
     .game-title {
@@ -1066,6 +1234,49 @@ body {
     .btn:active {
         transform: scale(0.98);
         transition: transform 0.1s ease;
+    }
+    
+    /* Ensure proper flex layout for normal dot display */
+    .dots:not(.vertical):not(.triangle) {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    /* Override animations for mobile to be less intensive */
+    .dot {
+        animation: dotAppear 0.4s ease-out, dotPulse 3s ease-in-out infinite;
+    }
+    
+    .dot.expanding {
+        animation: dotExpand 0.3s ease-out;
+    }
+    
+    /* Update triangle dot animations for mobile */
+    .dots.triangle .dot:nth-child(1) {
+        animation: dotAppear 0.4s ease-out, dotPulse 3s ease-in-out infinite;
+    }
+    
+    .dots.triangle .dot:nth-child(2) {
+        animation: dotAppear 0.4s ease-out, dotPulse 3s ease-in-out infinite;
+    }
+    
+    .dots.triangle .dot:nth-child(3) {
+        animation: dotAppear 0.4s ease-out, dotPulse 3s ease-in-out infinite;
+    }
+    
+    /* Ensure dots are always visible and properly positioned */
+    .dots {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .dot {
+        position: absolute;
+        display: block;
+        z-index: 1;
     }
 }
 
@@ -1120,6 +1331,28 @@ body {
     border-color: #4ecdc4;
 }
 
+.player-color-select {
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+    background: white;
+    transition: border-color 0.3s ease;
+    cursor: pointer;
+    min-width: 100px;
+}
+
+.player-color-select:focus {
+    outline: none;
+    border-color: #4ecdc4;
+}
+
+.player-color-select option:disabled {
+    background-color: #f5f5f5;
+    color: #999;
+}
+
 .multiplayer-section {
     margin: 30px 0;
     padding: 20px;
@@ -1157,6 +1390,67 @@ body {
 .input-group input:focus {
     outline: none;
     border-color: #4ecdc4;
+}
+
+.color-selection-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.color-selection-group label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #666;
+}
+
+.waiting-room-colors {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.waiting-room-colors h4 {
+    color: #4ecdc4;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.waiting-room-player-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+}
+
+.waiting-room-player-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.waiting-room-player-name {
+    font-weight: 700;
+    flex: 1;
+}
+
+.my-color-selection {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.my-color-selection label {
+    font-weight: 700;
+    color: #4ecdc4;
 }
 
 .multiplayer-divider {

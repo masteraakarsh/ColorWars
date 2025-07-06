@@ -94,6 +94,10 @@
             <div class="game-board-container">
                 <div class="current-turn" id="current-turn">
                     <span class="turn-indicator">Red Player's Turn</span>
+                    <div class="timer-container" id="timer-container">
+                        <div class="timer-display" id="timer-display">30</div>
+                        <div class="timer-label">seconds</div>
+                    </div>
                 </div>
                 <div class="game-board" id="game-board"></div>
                 <div class="game-status" id="game-status">
@@ -149,11 +153,11 @@
     <div class="modal" id="player-names-modal">
         <div class="modal-content">
             <span class="close" id="close-player-names">&times;</span>
-            <h2>Set Player Names</h2>
+            <h2>Set Player Names & Colors</h2>
             <div class="player-names-content">
-                <p>Enter names for each player:</p>
+                <p>Enter names and choose colors for each player:</p>
                 <div id="player-name-inputs"></div>
-                <button class="btn btn-primary" id="save-player-names">Save Names</button>
+                <button class="btn btn-primary" id="save-player-names">Save Names & Colors</button>
             </div>
         </div>
     </div>
@@ -168,6 +172,15 @@
                     <p>Create a new room and invite your friends!</p>
                     <div class="input-group">
                         <input type="text" id="create-player-name" placeholder="Enter your name" maxlength="20">
+                        <div class="color-selection-group">
+                            <label for="create-player-color">Choose your color:</label>
+                            <select id="create-player-color" class="player-color-select">
+                                <option value="red">Red</option>
+                                <option value="blue" selected>Blue</option>
+                                <option value="green">Green</option>
+                                <option value="yellow">Yellow</option>
+                            </select>
+                        </div>
                         <button class="btn btn-primary" id="create-room-btn">Create Room</button>
                     </div>
                 </div>
@@ -180,6 +193,15 @@
                     <div class="input-group">
                         <input type="text" id="join-player-name" placeholder="Enter your name" maxlength="20">
                         <input type="text" id="room-id-input" placeholder="Enter Room ID" maxlength="8">
+                        <div class="color-selection-group">
+                            <label for="join-player-color">Choose your color:</label>
+                            <select id="join-player-color" class="player-color-select">
+                                <option value="red">Red</option>
+                                <option value="blue">Blue</option>
+                                <option value="green">Green</option>
+                                <option value="yellow" selected>Yellow</option>
+                            </select>
+                        </div>
                         <button class="btn btn-primary" id="join-room-btn">Join Room</button>
                     </div>
                 </div>
@@ -191,8 +213,24 @@
                         <p><strong>Share this ID with your friend to join!</strong></p>
                         <button class="btn btn-secondary" id="copy-room-id">Copy Room ID</button>
                     </div>
+                    
+                    <div class="waiting-room-colors" id="waiting-room-colors">
+                        <h4>Player Colors</h4>
+                        <div id="waiting-room-player-list"></div>
+                        <div class="my-color-selection" id="my-color-selection">
+                            <label for="waiting-room-color">Your color:</label>
+                            <select id="waiting-room-color" class="player-color-select">
+                                <option value="red">Red</option>
+                                <option value="blue">Blue</option>
+                                <option value="green">Green</option>
+                                <option value="yellow">Yellow</option>
+                            </select>
+                        </div>
+                    </div>
+                    
                     <div class="waiting-message">
-                        <p>Waiting for opponent to join...</p>
+                        <p>Waiting for opponents to join...</p>
+                        <p><small>You are the host - you can start the game when everyone joins!</small></p>
                         <div class="loading-spinner"></div>
                     </div>
                 </div>
