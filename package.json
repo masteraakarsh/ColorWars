@@ -7,7 +7,9 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "build": "npm install",
-    "test": "echo 'No tests specified yet'"
+    "test": "echo 'No tests specified yet'",
+    "postinstall": "echo 'Build completed'",
+    "serve": "npm start"
   },
   "keywords": [
     "game",

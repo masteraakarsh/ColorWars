@@ -1,8 +1,7 @@
 services:
   - type: web
-    name: colorwars
+    name: colorwars-game
     env: node
-    plan: free
     buildCommand: npm install
     startCommand: npm start
     envVars:
