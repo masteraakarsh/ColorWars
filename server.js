@@ -29,35 +29,61 @@ app.get('/', (req, res) => {
 
 // Game room class
 class GameRoom {
-    constructor(roomId) {
+    constructor(roomId, playerCount = 2) {
         this.id = roomId;
         this.players = [];
+        this.playerCount = playerCount;
+        this.playerColors = {
+            2: ['red', 'blue'],
+            3: ['red', 'blue', 'green'],
+            4: ['red', 'blue', 'green', 'yellow'],
+            5: ['red', 'blue', 'green', 'yellow', 'purple'],
+            6: ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
+        };
+        this.boardSizeMap = {
+            2: 5,  // 2 players: 5x5 board
+            3: 6,  // 3 players: 6x6 board
+            4: 7,  // 4 players: 7x7 board
+            5: 8,  // 5 players: 8x8 board
+            6: 9   // 6 players: 9x9 board
+        };
         this.gameState = {
             board: null,
-            currentPlayer: 'red',
+            currentPlayerIndex: 0,
+            currentPlayer: this.playerColors[this.playerCount][0],
             gameStatus: 'waiting', // 'waiting', 'playing', 'ended'
-            boardSize: 5,
-            moveHistory: []
+            boardSize: this.boardSizeMap[this.playerCount],
+            moveHistory: [],
+            playerCount: this.playerCount,
+            players: this.playerColors[this.playerCount],
+            connectedPlayers: {}
         };
         this.spectators = [];
         this.createdAt = new Date();
     }
 
     addPlayer(socket, playerName) {
-        if (this.players.length >= 2) {
+        if (this.players.length >= this.playerCount) {
             return { success: false, message: 'Room is full' };
         }
 
         const player = {
             id: socket.id,
             name: playerName,
-            color: this.players.length === 0 ? 'red' : 'blue',
+            color: this.playerColors[this.playerCount][this.players.length],
             socket: socket
         };
 
         this.players.push(player);
         
-        if (this.players.length === 2) {
+        // Update connected players in game state
+        this.gameState.connectedPlayers[player.color] = {
+            name: player.name,
+            color: player.color,
+            connected: true
+        };
+        
+        if (this.players.length === this.playerCount) {
             this.gameState.gameStatus = 'playing';
             this.initializeBoard();
         }
@@ -74,14 +100,25 @@ class GameRoom {
     }
 
     removePlayer(socketId) {
+        const removedPlayer = this.players.find(p => p.id === socketId);
+        
         this.players = this.players.filter(p => p.id !== socketId);
         this.spectators = this.spectators.filter(s => s.id !== socketId);
+        
+        // Update connected players in game state
+        if (removedPlayer) {
+            this.gameState.connectedPlayers[removedPlayer.color] = {
+                name: 'Waiting...',
+                color: removedPlayer.color,
+                connected: false
+            };
+        }
         
         if (this.players.length === 0) {
             return true; // Room should be deleted
         }
         
-        if (this.players.length === 1 && this.gameState.gameStatus === 'playing') {
+        if (this.players.length < this.playerCount && this.gameState.gameStatus === 'playing') {
             this.gameState.gameStatus = 'waiting';
         }
         
@@ -146,17 +183,15 @@ class GameRoom {
                  const cell = this.gameState.board[row][col];
          
          // Check if this is a valid move (same logic as client)
-         if (this.gameState.moveHistory.length === 0 && player.color === 'red' && cell.owner === null) {
-             // Red player's first move - allowed
-         } else if (this.gameState.moveHistory.length === 1 && player.color === 'blue' && cell.owner === null) {
-             // Blue player's first move - allowed
+         if (this.gameState.moveHistory.length < this.playerCount && cell.owner === null) {
+             // First move for each player - allowed
          } else if (cell.owner !== player.color) {
              return { success: false, message: 'Invalid move - can only click your own cells' };
          }
 
-                // Check if this is a first move BEFORE adding to history
-        const isFirstMove = (this.gameState.moveHistory.length === 0 && player.color === 'red') || 
-                           (this.gameState.moveHistory.length === 1 && player.color === 'blue');
+         // Check if this is a first move for this player
+         const playerMoves = this.gameState.moveHistory.filter(move => move.player === player.color);
+         const isFirstMove = playerMoves.length === 0;
 
         // Save move to history
         this.gameState.moveHistory.push({
@@ -185,7 +220,8 @@ class GameRoom {
             this.gameState.winner = winner;
         } else {
             // Switch turns
-            this.gameState.currentPlayer = this.gameState.currentPlayer === 'red' ? 'blue' : 'red';
+            this.gameState.currentPlayerIndex = (this.gameState.currentPlayerIndex + 1) % this.playerCount;
+            this.gameState.currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
         }
 
         return { 
@@ -199,7 +235,10 @@ class GameRoom {
                     player: move.player,
                     move: move.move
                 })),
-                winner: this.gameState.winner
+                winner: this.gameState.winner,
+                playerCount: this.gameState.playerCount,
+                players: this.gameState.players,
+                connectedPlayers: this.gameState.connectedPlayers
             }
         };
     }
@@ -243,13 +282,24 @@ class GameRoom {
     }
 
     checkWinCondition() {
-        if (this.gameState.moveHistory.length <= 1) return null;
+        const playerCellCounts = {};
+        let activePlayers = 0;
+        let winner = null;
         
-        const redCells = this.countPlayerCells('red');
-        const blueCells = this.countPlayerCells('blue');
+        // Count cells for each player
+        for (let player of this.gameState.players) {
+            const cellCount = this.countPlayerCells(player);
+            playerCellCounts[player] = cellCount;
+            if (cellCount > 0) {
+                activePlayers++;
+                winner = player;
+            }
+        }
         
-        if (redCells === 0) return 'blue';
-        if (blueCells === 0) return 'red';
+        // Win condition: only one player has cells remaining (after all players have made their first move)
+        if (this.gameState.moveHistory.length >= this.playerCount && activePlayers === 1) {
+            return winner;
+        }
         
         return null;
     }
@@ -290,7 +340,8 @@ io.on('connection', (socket) => {
     // Create or join room
     socket.on('createRoom', (data) => {
         const roomId = uuidv4().substring(0, 8);
-        const room = new GameRoom(roomId);
+        const playerCount = data.playerCount || 2;
+        const room = new GameRoom(roomId, playerCount);
         
         gameRooms.set(roomId, room);
         playerRooms.set(socket.id, roomId);
@@ -401,7 +452,7 @@ io.on('connection', (socket) => {
         const rooms = Array.from(gameRooms.values()).map(room => ({
             id: room.id,
             players: room.players.length,
-            maxPlayers: 2,
+            maxPlayers: room.playerCount,
             spectators: room.spectators.length,
             status: room.gameState.gameStatus,
             createdAt: room.createdAt

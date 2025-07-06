@@ -44,6 +44,22 @@ body {
     color: #3742fa;
 }
 
+.color-green {
+    color: #2ed573;
+}
+
+.color-yellow {
+    color: #ffa502;
+}
+
+.color-purple {
+    color: #a55eea;
+}
+
+.color-orange {
+    color: #ff6348;
+}
+
 .game-subtitle {
     font-size: 1.1rem;
     color: #fff;
@@ -67,6 +83,8 @@ body {
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     backdrop-filter: blur(10px);
     height: fit-content;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .player-info {
@@ -106,10 +124,30 @@ body {
     background: linear-gradient(135deg, #74b9ff, #3742fa);
 }
 
+.player-green {
+    background: linear-gradient(135deg, #55efc4, #2ed573);
+}
+
+.player-yellow {
+    background: linear-gradient(135deg, #fdcb6e, #ffa502);
+}
+
+.player-purple {
+    background: linear-gradient(135deg, #fd79a8, #a55eea);
+}
+
+.player-orange {
+    background: linear-gradient(135deg, #ff7675, #ff6348);
+}
+
 .player-name {
     font-weight: 700;
     font-size: 1.1rem;
     flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
 }
 
 .player-cells {
@@ -118,6 +156,28 @@ body {
     color: #4ecdc4;
     min-width: 30px;
     text-align: center;
+}
+
+.connection-status {
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-left: 5px;
+    padding: 2px 4px;
+    border-radius: 50%;
+    min-width: 12px;
+    text-align: center;
+    height: 12px;
+    line-height: 8px;
+}
+
+.connection-status.connected {
+    color: #2ed573;
+    background-color: rgba(46, 213, 115, 0.1);
+}
+
+.connection-status.disconnected {
+    color: #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.1);
 }
 
 /* Game Controls */
@@ -197,6 +257,12 @@ body {
 .setting-group select:focus {
     outline: none;
     border-color: #4ecdc4;
+}
+
+.setting-group select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #f5f5f5;
 }
 
 /* Checkbox Styling */
@@ -285,6 +351,10 @@ body {
     grid-template-columns: repeat(6, 1fr);
 }
 
+.game-board.size-7 {
+    grid-template-columns: repeat(7, 1fr);
+}
+
 .game-board.size-8 {
     grid-template-columns: repeat(8, 1fr);
 }
@@ -322,6 +392,26 @@ body {
 .cell.blue {
     background: #4ecdc4;
     box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+}
+
+.cell.green {
+    background: #2ed573;
+    box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);
+}
+
+.cell.yellow {
+    background: #ffa502;
+    box-shadow: 0 4px 15px rgba(255, 165, 2, 0.3);
+}
+
+.cell.purple {
+    background: #a55eea;
+    box-shadow: 0 4px 15px rgba(165, 94, 234, 0.3);
+}
+
+.cell.orange {
+    background: #ff6348;
+    box-shadow: 0 4px 15px rgba(255, 99, 72, 0.3);
 }
 
 .cell.empty:hover {
@@ -829,6 +919,41 @@ body {
 /* Multiplayer Modal Styles */
 .multiplayer-content {
     text-align: center;
+}
+
+.player-names-content {
+    padding: 20px 0;
+}
+
+.player-name-input-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.player-color-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.player-name-input {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+    background: white;
+    transition: border-color 0.3s ease;
+}
+
+.player-name-input:focus {
+    outline: none;
+    border-color: #4ecdc4;
 }
 
 .multiplayer-section {

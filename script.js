@@ -1,9 +1,26 @@
 // ColorWars Game Logic
 class ColorWarsGame {
     constructor() {
-        this.boardSize = 5;
+        this.playerCount = 2; // Default to 2 players
+        this.players = ['red', 'blue']; // Will be updated based on player count
+        this.playerColors = {
+            2: ['red', 'blue'],
+            3: ['red', 'blue', 'green'],
+            4: ['red', 'blue', 'green', 'yellow'],
+            5: ['red', 'blue', 'green', 'yellow', 'purple'],
+            6: ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
+        };
+        this.boardSizeMap = {
+            2: 5,  // 2 players: 5x5 board
+            3: 6,  // 3 players: 6x6 board
+            4: 7,  // 4 players: 7x7 board
+            5: 8,  // 5 players: 8x8 board
+            6: 9   // 6 players: 9x9 board
+        };
+        this.boardSize = this.boardSizeMap[this.playerCount];
         this.board = [];
-        this.currentPlayer = 'red';
+        this.currentPlayerIndex = 0;
+        this.currentPlayer = this.players[this.currentPlayerIndex];
         this.gameMode = 'local';
         this.gameState = 'playing'; // 'playing', 'ended'
         this.soundEnabled = true;
@@ -12,13 +29,63 @@ class ColorWarsGame {
         this.isAnimating = false;
         this.aiDifficulty = 'medium';
         
+        // Player information
+        this.playerNames = {};
+        this.connectedPlayers = {};
+        this.isOnlineGame = false;
+        this.previousPlayerCount = 2; // Store previous player count for mode switching
+        
         this.initializeGame();
         this.setupEventListeners();
+    }
+
+    setPlayerCount(count) {
+        if (count < 2 || count > 6) {
+            console.error('Player count must be between 2 and 6');
+            return;
+        }
+        
+        this.playerCount = count;
+        this.players = this.playerColors[count];
+        this.boardSize = this.boardSizeMap[count];
+        this.currentPlayerIndex = 0;
+        this.currentPlayer = this.players[this.currentPlayerIndex];
+        
+        // Initialize default player names for local games
+        this.initializePlayerNames();
+        
+        this.initializeGame();
+    }
+
+    initializePlayerNames() {
+        this.playerNames = {};
+        this.connectedPlayers = {};
+        
+        for (let i = 0; i < this.playerCount; i++) {
+            const color = this.players[i];
+            const colorName = color.charAt(0).toUpperCase() + color.slice(1);
+            
+            // In AI mode, the second player is the computer
+            if (this.gameMode === 'ai' && i === 1) {
+                this.playerNames[color] = 'Computer';
+            } else {
+                this.playerNames[color] = `${colorName} Player`;
+            }
+            
+            if (!this.isOnlineGame) {
+                this.connectedPlayers[color] = {
+                    name: this.playerNames[color],
+                    color: color,
+                    connected: true
+                };
+            }
+        }
     }
 
     initializeGame() {
         this.createBoard();
         this.renderBoard();
+        this.updatePlayerCardsVisibility();
         this.updateUI();
         this.resetPlayerStats();
     }
@@ -67,10 +134,9 @@ class ColorWarsGame {
         
         let className = `cell ${cellData.owner || 'empty'}`;
         
-        // Check if this empty cell can be clicked (first move only)
+        // Check if this empty cell can be clicked (first move for each player)
         if (!cellData.owner) {
-            const isFirstMoveAllowed = (this.moveHistory.length === 0 && this.currentPlayer === 'red') || 
-                                     (this.moveHistory.length === 1 && this.currentPlayer === 'blue');
+            const isFirstMoveAllowed = this.moveHistory.length < this.playerCount;
             if (isFirstMoveAllowed) {
                 className += ' first-move-allowed';
             }
@@ -117,7 +183,8 @@ class ColorWarsGame {
     async handleCellClick(row, col) {
         if (this.gameState !== 'playing' || this.isAnimating) return;
         
-        if (this.gameMode === 'ai' && this.currentPlayer === 'blue') return;
+        // In AI mode, only allow human player (first player) to click
+        if (this.gameMode === 'ai' && this.currentPlayer !== this.players[0]) return;
         
         if (this.gameMode === 'online') {
             if (this.isValidMove(row, col)) {
@@ -130,7 +197,8 @@ class ColorWarsGame {
             await this.makeMove(row, col, this.currentPlayer);
             
             if (this.gameState === 'playing') {
-                if (this.gameMode === 'ai' && this.currentPlayer === 'blue') {
+                // In AI mode, trigger AI move if it's now the AI's turn
+                if (this.gameMode === 'ai' && this.currentPlayer === this.players[1]) {
                     setTimeout(() => this.makeAIMove(), 500);
                 }
             }
@@ -139,21 +207,20 @@ class ColorWarsGame {
 
     isValidMove(row, col) {
         const cell = this.board[row][col];
-        // Players can only click on their own cells, not empty cells
-        // Exception: First move of the game can be on any empty cell
-        if (this.moveHistory.length === 0 && this.currentPlayer === 'red' && cell.owner === null) {
-            return true; // Red player's first move
+        
+        // First move for each player can be on any empty cell
+        if (this.moveHistory.length < this.playerCount && cell.owner === null) {
+            return true;
         }
-        if (this.moveHistory.length === 1 && this.currentPlayer === 'blue' && cell.owner === null) {
-            return true; // Blue player's first move
-        }
+        
+        // After first moves, players can only click their own cells
         return cell.owner === this.currentPlayer;
     }
 
     async makeMove(row, col, player) {
-        // Check if this is a first move BEFORE adding to history
-        const isFirstMove = (this.moveHistory.length === 0 && player === 'red') || 
-                           (this.moveHistory.length === 1 && player === 'blue');
+        // Check if this is a first move for this player
+        const playerMoves = this.moveHistory.filter(move => move.player === player);
+        const isFirstMove = playerMoves.length === 0;
 
         // Add placement animation
         const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
@@ -167,7 +234,8 @@ class ColorWarsGame {
         // Save move for undo functionality
         this.moveHistory.push({
             board: this.deepCopyBoard(),
-            player: this.currentPlayer
+            player: this.currentPlayer,
+            move: { row, col }
         });
 
         // Update undo button state
@@ -200,18 +268,15 @@ class ColorWarsGame {
             const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
             if (cellElement) {
                 const dots = cellElement.querySelectorAll('.dot');
-                dots.forEach(dot => {
-                    dot.classList.add('expanding');
-                    setTimeout(() => {
-                        dot.classList.remove('expanding');
-                    }, 500);
-                });
+                dots.forEach(dot => dot.classList.add('expanding'));
             }
         }, 100);
 
-        // Check win condition
-        if (this.checkWinCondition()) {
-            this.endGame();
+        // Check for win condition
+        const winner = this.checkWinCondition();
+        if (winner) {
+            this.gameState = 'ended';
+            this.endGame(winner);
         } else {
             this.switchPlayer();
         }
@@ -282,15 +347,26 @@ class ColorWarsGame {
     }
 
     checkWinCondition() {
-        const redCells = this.countPlayerCells('red');
-        const blueCells = this.countPlayerCells('blue');
+        const playerCellCounts = {};
+        let activePlayers = 0;
+        let winner = null;
         
-        // Game ends when one player has no cells (except for the first move)
-        if (this.moveHistory.length > 1) {
-            return redCells === 0 || blueCells === 0;
+        // Count cells for each player
+        for (let player of this.players) {
+            const cellCount = this.countPlayerCells(player);
+            playerCellCounts[player] = cellCount;
+            if (cellCount > 0) {
+                activePlayers++;
+                winner = player;
+            }
         }
         
-        return false;
+        // Win condition: only one player has cells remaining (after all players have made their first move)
+        if (this.moveHistory.length >= this.playerCount && activePlayers === 1) {
+            return winner;
+        }
+        
+        return null;
     }
 
     countPlayerCells(player) {
@@ -306,19 +382,26 @@ class ColorWarsGame {
     }
 
     switchPlayer() {
-        this.currentPlayer = this.currentPlayer === 'red' ? 'blue' : 'red';
+        this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.playerCount;
+        this.currentPlayer = this.players[this.currentPlayerIndex];
         this.updateUI();
     }
 
     updateUI() {
         // Update turn indicator
         const turnIndicator = document.querySelector('.turn-indicator');
-        const playerName = this.currentPlayer === 'red' ? 'Red Player' : 'Blue Player';
+        const playerName = this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1) + ' Player';
         turnIndicator.textContent = `${playerName}'s Turn`;
+        turnIndicator.className = `turn-indicator color-${this.currentPlayer}`;
         
         // Update player cards
-        document.getElementById('player1-card').classList.toggle('active', this.currentPlayer === 'red');
-        document.getElementById('player2-card').classList.toggle('active', this.currentPlayer === 'blue');
+        for (let i = 0; i < this.playerCount; i++) {
+            const player = this.players[i];
+            const playerCard = document.getElementById(`player${i + 1}-card`);
+            if (playerCard) {
+                playerCard.classList.toggle('active', this.currentPlayer === player);
+            }
+        }
         
         // Update game status
         this.updateGameStatus();
@@ -327,34 +410,90 @@ class ColorWarsGame {
     updateGameStatus() {
         const statusElement = document.getElementById('game-status');
         if (this.gameState === 'playing') {
-            if (this.moveHistory.length < 2) {
-                statusElement.textContent = 'Place your first dot anywhere on the board to start (3 dots)!';
+            if (this.moveHistory.length < this.playerCount) {
+                if (this.gameMode === 'ai') {
+                    statusElement.textContent = 'Playing vs Computer - Place your first dot anywhere to start (3 dots)!';
+                } else {
+                    statusElement.textContent = 'Place your first dot anywhere on the board to start (3 dots)!';
+                }
             } else {
-                statusElement.textContent = 'Click on your own cells to add dots and trigger chain reactions!';
+                if (this.gameMode === 'ai') {
+                    if (this.currentPlayer === this.players[0]) {
+                        statusElement.textContent = 'Your turn - Click on your own cells to add dots!';
+                    } else {
+                        statusElement.textContent = 'Computer is thinking...';
+                    }
+                } else {
+                    statusElement.textContent = 'Click on your own cells to add dots and trigger chain reactions!';
+                }
             }
         }
     }
 
     updatePlayerStats() {
-        const redCells = this.countPlayerCells('red');
-        const blueCells = this.countPlayerCells('blue');
-        
-        document.getElementById('red-cells').textContent = redCells;
-        document.getElementById('blue-cells').textContent = blueCells;
+        for (let i = 0; i < this.playerCount; i++) {
+            const player = this.players[i];
+            const cellCount = this.countPlayerCells(player);
+            const cellsElement = document.getElementById(`${player}-cells`);
+            if (cellsElement) {
+                cellsElement.textContent = cellCount;
+            }
+        }
     }
 
     resetPlayerStats() {
-        document.getElementById('red-cells').textContent = '0';
-        document.getElementById('blue-cells').textContent = '0';
+        for (let i = 0; i < this.playerCount; i++) {
+            const player = this.players[i];
+            const cellsElement = document.getElementById(`${player}-cells`);
+            if (cellsElement) {
+                cellsElement.textContent = '0';
+            }
+        }
     }
 
-    endGame() {
+    updatePlayerCardsVisibility() {
+        // Show/hide player cards based on player count
+        for (let i = 1; i <= 6; i++) {
+            const playerCard = document.getElementById(`player${i}-card`);
+            if (playerCard) {
+                if (i <= this.playerCount) {
+                    playerCard.style.display = 'flex';
+                    
+                    // Update player name and connection status
+                    const color = this.players[i - 1];
+                    const playerNameElement = playerCard.querySelector('.player-name');
+                    const connectionStatus = playerCard.querySelector('.connection-status');
+                    
+                    if (playerNameElement) {
+                        const playerInfo = this.connectedPlayers[color];
+                        if (playerInfo) {
+                            playerNameElement.textContent = playerInfo.name;
+                            playerNameElement.title = `${playerInfo.name} (${color})`;
+                            
+                            // Add connection status indicator
+                            if (!connectionStatus) {
+                                const statusElement = document.createElement('div');
+                                statusElement.className = 'connection-status';
+                                playerCard.appendChild(statusElement);
+                            }
+                            
+                            const statusElement = playerCard.querySelector('.connection-status');
+                            if (statusElement) {
+                                statusElement.className = `connection-status ${playerInfo.connected ? 'connected' : 'disconnected'}`;
+                                statusElement.textContent = playerInfo.connected ? '●' : '○';
+                                statusElement.title = playerInfo.connected ? 'Connected' : 'Disconnected';
+                            }
+                        }
+                    }
+                } else {
+                    playerCard.style.display = 'none';
+                }
+            }
+        }
+    }
+
+    endGame(winner) {
         this.gameState = 'ended';
-        const redCells = this.countPlayerCells('red');
-        const blueCells = this.countPlayerCells('blue');
-        
-        const winner = redCells > blueCells ? 'Red Player' : 'Blue Player';
-        const winnerColor = redCells > blueCells ? 'red' : 'blue';
         
         this.playSound('win');
         
@@ -363,31 +502,42 @@ class ColorWarsGame {
         const winMessage = document.getElementById('win-message');
         const winStats = document.getElementById('win-stats');
         
-        winMessage.textContent = `${winner} Wins!`;
-        winMessage.style.color = winnerColor === 'red' ? '#ff4757' : '#3742fa';
+        const winnerName = winner.charAt(0).toUpperCase() + winner.slice(1) + ' Player';
+        winMessage.textContent = `${winnerName} Wins!`;
+        winMessage.className = `color-${winner}`;
         
-        winStats.innerHTML = `
-            <div>Red Cells: ${redCells}</div>
-            <div>Blue Cells: ${blueCells}</div>
-            <div>Total Moves: ${this.moveHistory.length}</div>
-        `;
+        // Generate stats for all players
+        let statsHTML = `<div>Total Moves: ${this.moveHistory.length}</div>`;
+        for (let player of this.players) {
+            const cellCount = this.countPlayerCells(player);
+            const playerName = player.charAt(0).toUpperCase() + player.slice(1);
+            statsHTML += `<div>${playerName} Cells: ${cellCount}</div>`;
+        }
         
+        winStats.innerHTML = statsHTML;
         winModal.style.display = 'block';
         
         // Update game status
-        document.getElementById('game-status').textContent = `Game Over! ${winner} dominates the board!`;
+        document.getElementById('game-status').textContent = `Game Over! ${winnerName} dominates the board!`;
     }
 
     newGame() {
         this.gameState = 'playing';
-        this.currentPlayer = 'red';
+        this.currentPlayerIndex = 0;
+        this.currentPlayer = this.players[this.currentPlayerIndex];
         this.moveHistory = [];
         this.isAnimating = false;
         
         document.getElementById('undo-btn').disabled = true;
         
+        // Initialize player names for new game
+        if (!this.isOnlineGame) {
+            this.initializePlayerNames();
+        }
+        
         this.createBoard();
         this.renderBoard();
+        this.updatePlayerCardsVisibility();
         this.updateUI();
         this.resetPlayerStats();
         
@@ -417,14 +567,22 @@ class ColorWarsGame {
     async makeAIMove() {
         if (this.gameState !== 'playing' || this.isAnimating) return;
         
+        // Update UI to show AI is thinking
+        this.updateGameStatus();
+        
+        // In AI mode, the computer plays as the second player (index 1)
+        const aiPlayer = this.players[1]; // Should be 'blue' in 2-player AI mode
+        
         const move = this.getAIMove();
         if (move) {
-            await this.makeMove(move.row, move.col, 'blue');
+            await this.makeMove(move.row, move.col, aiPlayer);
         }
     }
 
     getAIMove() {
-        const validMoves = this.getValidMoves('blue');
+        // In AI mode, the computer plays as the second player
+        const aiPlayer = this.players[1]; // Should be 'blue' in 2-player AI mode
+        const validMoves = this.getValidMoves(aiPlayer);
         if (validMoves.length === 0) return null;
         
         switch (this.aiDifficulty) {
@@ -617,11 +775,43 @@ class ColorWarsGame {
         
         // Enable/disable difficulty selector
         const difficultySelect = document.getElementById('difficulty');
-        difficultySelect.disabled = mode !== 'ai';
+        const playerCountSelect = document.getElementById('player-count');
         
-        // Update player names
-        const player2Name = document.querySelector('#player2-card .player-name');
-        player2Name.textContent = mode === 'ai' ? 'Computer' : 'Blue Player';
+        if (mode === 'ai') {
+            difficultySelect.disabled = false;
+            // AI mode only supports 2 players (human vs computer)
+            this.previousPlayerCount = this.playerCount; // Save current selection
+            playerCountSelect.disabled = true;
+            playerCountSelect.value = '2';
+            this.setPlayerCount(2);
+            
+            // Disable player names button in AI mode
+            const setNamesBtn = document.getElementById('set-names-btn');
+            if (setNamesBtn) {
+                setNamesBtn.disabled = true;
+                setNamesBtn.title = 'Player names are fixed in AI mode';
+            }
+        } else {
+            difficultySelect.disabled = true;
+            // Restore player count selection for other modes
+            playerCountSelect.disabled = false;
+            if (this.previousPlayerCount && mode !== 'online') {
+                playerCountSelect.value = this.previousPlayerCount.toString();
+                this.setPlayerCount(this.previousPlayerCount);
+            }
+            
+            // Re-enable player names button
+            const setNamesBtn = document.getElementById('set-names-btn');
+            if (setNamesBtn) {
+                setNamesBtn.disabled = false;
+                setNamesBtn.title = 'Set custom names for players';
+            }
+        }
+        
+        // Reset to local multiplayer if switching away from online
+        if (mode !== 'online') {
+            this.isOnlineGame = false;
+        }
         
         this.newGame();
     }
@@ -643,12 +833,22 @@ class ColorWarsGame {
     setupEventListeners() {
         // Game controls
         document.getElementById('new-game-btn').addEventListener('click', () => this.newGame());
+        document.getElementById('set-names-btn').addEventListener('click', () => this.showPlayerNamesModal());
         document.getElementById('undo-btn').addEventListener('click', () => this.undoMove());
         document.getElementById('hint-btn').addEventListener('click', () => this.showHint());
         
         // Settings
-        document.getElementById('board-size').addEventListener('change', (e) => {
-            this.changeBoardSize(e.target.value);
+        document.getElementById('player-count').addEventListener('change', (e) => {
+            const count = parseInt(e.target.value);
+            
+            // Don't allow changing player count in AI mode
+            if (this.gameMode === 'ai') {
+                e.target.value = '2';
+                return;
+            }
+            
+            this.setPlayerCount(count);
+            this.updatePlayerCardsVisibility();
         });
         
         document.getElementById('game-mode').addEventListener('change', (e) => {
@@ -682,6 +882,15 @@ class ColorWarsGame {
         
         document.getElementById('play-again-btn').addEventListener('click', () => {
             this.newGame();
+        });
+
+        // Player names modal
+        document.getElementById('close-player-names').addEventListener('click', () => {
+            document.getElementById('player-names-modal').style.display = 'none';
+        });
+        
+        document.getElementById('save-player-names').addEventListener('click', () => {
+            this.savePlayerNames();
         });
         
         // Multiplayer modal controls
@@ -725,6 +934,7 @@ class ColorWarsGame {
             const rulesModal = document.getElementById('rules-modal');
             const winModal = document.getElementById('win-modal');
             const multiplayerModal = document.getElementById('multiplayer-modal');
+            const playerNamesModal = document.getElementById('player-names-modal');
             
             if (event.target === rulesModal) {
                 rulesModal.style.display = 'none';
@@ -734,6 +944,9 @@ class ColorWarsGame {
             }
             if (event.target === multiplayerModal) {
                 multiplayerModal.style.display = 'none';
+            }
+            if (event.target === playerNamesModal) {
+                playerNamesModal.style.display = 'none';
             }
         });
     }
@@ -767,6 +980,69 @@ class ColorWarsGame {
                 cellElement.style.transform = '';
             }, 2000);
         }
+    }
+
+    showPlayerNamesModal() {
+        if (this.isOnlineGame) {
+            alert('Player names are automatically set in online games');
+            return;
+        }
+        
+        if (this.gameMode === 'ai') {
+            alert('Player names are fixed in AI mode (Human vs Computer)');
+            return;
+        }
+        
+        const modal = document.getElementById('player-names-modal');
+        const inputsContainer = document.getElementById('player-name-inputs');
+        
+        // Clear existing inputs
+        inputsContainer.innerHTML = '';
+        
+        // Create input for each player
+        for (let i = 0; i < this.playerCount; i++) {
+            const color = this.players[i];
+            const playerInfo = this.connectedPlayers[color];
+            
+            const inputGroup = document.createElement('div');
+            inputGroup.className = 'player-name-input-group';
+            
+            const colorIndicator = document.createElement('div');
+            colorIndicator.className = `player-color-indicator player-${color}`;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'player-name-input';
+            input.placeholder = `${color.charAt(0).toUpperCase() + color.slice(1)} Player`;
+            input.value = playerInfo ? playerInfo.name.replace(' (You)', '') : '';
+            input.maxLength = 20;
+            input.dataset.color = color;
+            
+            inputGroup.appendChild(colorIndicator);
+            inputGroup.appendChild(input);
+            inputsContainer.appendChild(inputGroup);
+        }
+        
+        modal.style.display = 'block';
+    }
+
+    savePlayerNames() {
+        const inputs = document.querySelectorAll('.player-name-input');
+        
+        inputs.forEach(input => {
+            const color = input.dataset.color;
+            const name = input.value.trim() || `${color.charAt(0).toUpperCase() + color.slice(1)} Player`;
+            
+            if (this.connectedPlayers[color]) {
+                this.connectedPlayers[color].name = name;
+            }
+        });
+        
+        // Update UI
+        this.updatePlayerCardsVisibility();
+        
+        // Close modal
+        document.getElementById('player-names-modal').style.display = 'none';
     }
 
     // Multiplayer functionality
@@ -836,6 +1112,28 @@ class ColorWarsGame {
         this.currentRoomId = data.roomId;
         this.playerColor = data.player.color;
         this.isOnlineGame = true;
+        
+        // Initialize connected players
+        this.connectedPlayers = {};
+        this.connectedPlayers[data.player.color] = {
+            name: data.player.name,
+            color: data.player.color,
+            connected: true
+        };
+        
+        // Initialize other player slots as waiting
+        for (let i = 0; i < this.playerCount; i++) {
+            const color = this.players[i];
+            if (color !== data.player.color) {
+                this.connectedPlayers[color] = {
+                    name: 'Waiting...',
+                    color: color,
+                    connected: false
+                };
+            }
+        }
+        
+        this.updatePlayerCardsVisibility();
     }
 
     handleRoomJoined(data) {
@@ -843,13 +1141,22 @@ class ColorWarsGame {
         this.playerColor = data.player.color;
         this.isOnlineGame = true;
         
+        // Update player information from game state
+        this.updateConnectedPlayersFromGameState(data.gameState);
+        
         // Start the game
         this.startOnlineGame(data.gameState);
     }
 
     handlePlayerJoined(data) {
+        // Update connected players information
+        this.updateConnectedPlayersFromGameState(data.gameState);
+        
         if (data.gameState.gameStatus === 'playing') {
             this.startOnlineGame(data.gameState);
+        } else {
+            // Update UI to show new player joined
+            this.updatePlayerCardsVisibility();
         }
     }
 
@@ -864,22 +1171,65 @@ class ColorWarsGame {
         this.currentPlayer = gameState.currentPlayer;
         this.boardSize = gameState.boardSize;
         this.moveHistory = gameState.moveHistory;
+        this.playerCount = gameState.playerCount;
+        this.players = gameState.players;
+        
+        // Update connected players information
+        this.updateConnectedPlayersFromGameState(gameState);
         
         // Update UI
         this.renderBoard();
+        this.updatePlayerCardsVisibility();
         this.updateUI();
         this.updatePlayerStats();
+    }
+
+    updateConnectedPlayersFromGameState(gameState) {
+        // Initialize connected players if not already done
+        if (!this.connectedPlayers) {
+            this.connectedPlayers = {};
+        }
         
-        // Update player names
-        const player1Name = document.querySelector('#player1-card .player-name');
-        const player2Name = document.querySelector('#player2-card .player-name');
+        // Update player count and colors if provided
+        if (gameState.playerCount) {
+            this.playerCount = gameState.playerCount;
+            this.players = gameState.players || this.playerColors[this.playerCount];
+        }
         
-        if (this.playerColor === 'red') {
-            player1Name.textContent = 'You (Red)';
-            player2Name.textContent = 'Opponent (Blue)';
-        } else {
-            player1Name.textContent = 'Opponent (Red)';
-            player2Name.textContent = 'You (Blue)';
+        // Mark all players as waiting initially
+        for (let i = 0; i < this.playerCount; i++) {
+            const color = this.players[i];
+            if (!this.connectedPlayers[color]) {
+                this.connectedPlayers[color] = {
+                    name: 'Waiting...',
+                    color: color,
+                    connected: false
+                };
+            }
+        }
+        
+        // Update with actual connected players from server
+        if (gameState.connectedPlayers) {
+            for (let color in gameState.connectedPlayers) {
+                const serverPlayerInfo = gameState.connectedPlayers[color];
+                this.connectedPlayers[color] = {
+                    name: this.playerColor === color ? `${serverPlayerInfo.name} (You)` : serverPlayerInfo.name,
+                    color: serverPlayerInfo.color,
+                    connected: serverPlayerInfo.connected
+                };
+            }
+        }
+        
+        // Fill in any missing slots with waiting status
+        for (let i = 0; i < this.playerCount; i++) {
+            const color = this.players[i];
+            if (!this.connectedPlayers[color] || !this.connectedPlayers[color].connected) {
+                this.connectedPlayers[color] = {
+                    name: 'Waiting...',
+                    color: color,
+                    connected: false
+                };
+            }
         }
     }
 
@@ -908,7 +1258,10 @@ class ColorWarsGame {
 
     createRoom(playerName) {
         if (this.socket && this.socket.connected) {
-            this.socket.emit('createRoom', { playerName });
+            this.socket.emit('createRoom', { 
+                playerName: playerName,
+                playerCount: this.playerCount
+            });
         } else {
             alert('Not connected to server. Please try again.');
         }
