@@ -53,15 +53,13 @@ class ColorWarsGame {
                                window.location.protocol === 'file:';
         
         if (isStaticHosting) {
-            // Disable online multiplayer option
+            // Disable online multiplayer button
             setTimeout(() => {
-                const gameModeSelect = document.getElementById('game-mode');
-                if (gameModeSelect) {
-                    const onlineOption = gameModeSelect.querySelector('option[value="online"]');
-                    if (onlineOption) {
-                        onlineOption.disabled = true;
-                        onlineOption.textContent = 'Online Multiplayer (Server Required)';
-                    }
+                const playOnlineBtn = document.getElementById('play-online-btn');
+                if (playOnlineBtn) {
+                    playOnlineBtn.disabled = true;
+                    playOnlineBtn.textContent = 'Play Online (Server Required)';
+                    playOnlineBtn.title = 'Online multiplayer requires a server. This is a static site.';
                 }
             }, 100);
             return false;
@@ -968,6 +966,9 @@ class ColorWarsGame {
         // Don't start timer for AI player in AI mode
         if (this.gameMode === 'ai' && this.currentPlayer === this.players[1]) return;
         
+        // Don't start timer for local multiplayer (offline) games
+        if (this.gameMode === 'local') return;
+        
         this.stopTimer(); // Clear any existing timer
         this.timeLeft = 30;
         this.updateTimerDisplay();
@@ -1137,6 +1138,7 @@ class ColorWarsGame {
     setupEventListeners() {
         // Game controls
         document.getElementById('new-game-btn').addEventListener('click', () => this.newGame());
+        document.getElementById('play-online-btn').addEventListener('click', () => this.showMultiplayerModal());
         document.getElementById('set-names-btn').addEventListener('click', () => this.showPlayerNamesModal());
         document.getElementById('undo-btn').addEventListener('click', () => this.undoMove());
         document.getElementById('hint-btn').addEventListener('click', () => this.showHint());
@@ -1156,11 +1158,7 @@ class ColorWarsGame {
         });
         
         document.getElementById('game-mode').addEventListener('change', (e) => {
-            if (e.target.value === 'online') {
-                this.showMultiplayerModal();
-            } else {
-                this.changeGameMode(e.target.value);
-            }
+            this.changeGameMode(e.target.value);
         });
         
         document.getElementById('difficulty').addEventListener('change', (e) => {
@@ -1799,21 +1797,32 @@ class ColorWarsGame {
     }
 
     handleOnlineMove(data) {
+        // Store current game state before updating
+        const wasAnimating = this.isAnimating;
+        
+        // Update board state from server
         this.board = data.gameState.board;
         this.currentPlayer = data.gameState.currentPlayer;
         this.moveHistory = data.gameState.moveHistory;
+        this.gameState = data.gameState.gameStatus === 'ended' ? 'ended' : 'playing';
         
         // Clean up any animation states before updating
         this.clearAllAnimations();
+        this.isAnimating = false;
         
         if (data.gameState.gameStatus === 'ended') {
-            this.gameState = 'ended';
             this.showGameWinNotification(data.gameState.winner);
             this.endGame(data.gameState.winner);
         } else {
+            // Force a complete re-render of the board to ensure dots are properly displayed
             this.renderBoard();
             this.updateUI();
             this.updatePlayerStats();
+            
+            // Restart timer for the new current player (but only if not in waiting state)
+            if (this.gameState === 'playing') {
+                this.startTimer();
+            }
         }
     }
 
