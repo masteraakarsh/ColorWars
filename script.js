@@ -37,11 +37,16 @@ class ColorWarsGame {
         this.previousPlayerCount = 2; // Store previous player count for mode switching
         this.isHost = false; // Track if current player is the host
         
+        // Online sidebar tracking
+        this.gameStartTime = null;
+        this.gameTimeInterval = null;
+        
         // Check if server is available for online play
         this.serverAvailable = this.checkServerAvailability();
         
         this.initializeGame();
         this.setupEventListeners();
+        this.setupOnlineSidebarEvents();
     }
 
     checkServerAvailability() {
@@ -634,51 +639,44 @@ class ColorWarsGame {
     }
 
     updatePlayerCardsVisibility() {
-        // Show/hide player cards based on player count
-        for (let i = 1; i <= 6; i++) {
+        // Update both regular and online player displays
+        for (let i = 1; i <= 4; i++) {
             const playerCard = document.getElementById(`player${i}-card`);
             if (playerCard) {
                 if (i <= this.playerCount) {
                     playerCard.style.display = 'flex';
-                    
-                    // Update player name and connection status
-                    const color = this.players[i - 1];
-                    const playerNameElement = playerCard.querySelector('.player-name');
-                    const connectionStatus = playerCard.querySelector('.connection-status');
-                    
-                    if (playerNameElement) {
-                        const playerInfo = this.connectedPlayers[color];
-                        if (playerInfo) {
-                            playerNameElement.textContent = playerInfo.name;
-                            playerNameElement.title = `${playerInfo.name} (${color})`;
-                            
-                            // Add connection status indicator
-                            if (!connectionStatus) {
-                                const statusElement = document.createElement('div');
-                                statusElement.className = 'connection-status';
-                                playerCard.appendChild(statusElement);
-                            }
-                            
-                            const statusElement = playerCard.querySelector('.connection-status');
-                            if (statusElement) {
-                                statusElement.className = `connection-status ${playerInfo.connected ? 'connected' : 'disconnected'}`;
-                                statusElement.textContent = playerInfo.connected ? '●' : '○';
-                                statusElement.title = playerInfo.connected ? 'Connected' : 'Disconnected';
-                            }
-                        }
+                    // Update active state
+                    if (this.players[i-1] === this.currentPlayer) {
+                        playerCard.classList.add('active');
+                    } else {
+                        playerCard.classList.remove('active');
                     }
                 } else {
                     playerCard.style.display = 'none';
                 }
             }
         }
+        
+        // Update online sidebar player list
+        if (this.isOnlineGame) {
+            this.updateOnlinePlayersList();
+        }
     }
 
     endGame(winner) {
         this.gameState = 'ended';
         this.stopTimer(); // Stop timer when game ends
+        this.stopGameTimer(); // Stop online game timer
         
         this.playSound('win');
+        
+        // Add end game message to online sidebar
+        if (this.isOnlineGame) {
+            const winnerName = this.connectedPlayers[winner]?.name?.replace(' (You)', '') || 
+                             `${winner.charAt(0).toUpperCase() + winner.slice(1)} Player`;
+            this.addOnlineMessage(`🎉 ${winnerName} wins!`, 'system');
+            this.updateOnlineSidebarInfo();
+        }
         
         // Show win modal
         const winModal = document.getElementById('win-modal');
@@ -719,9 +717,6 @@ class ColorWarsGame {
         
         winStats.innerHTML = statsHTML;
         winModal.style.display = 'block';
-        
-        // Update game status
-        document.getElementById('game-status').textContent = `Game Over! ${winnerName} dominates the board!`;
     }
 
     newGame() {
@@ -739,6 +734,11 @@ class ColorWarsGame {
         // Initialize player names for new game
         if (!this.isOnlineGame) {
             this.initializePlayerNames();
+            // Ensure regular sidebar is shown for local games
+            this.showRegularSidebar();
+        } else {
+            // For online games, keep the online sidebar
+            this.updateOnlineSidebarInfo();
         }
         
         this.createBoard();
@@ -988,25 +988,42 @@ class ColorWarsGame {
 
     // Timer methods
     startTimer() {
-        // Only start timer when game is actually playing, not in waiting room
-        if (!this.timerEnabled || this.gameState !== 'playing' || this.isOnlineGame && this.gameState === 'waiting') return;
+        // Only start timer if enabled and game is playing
+        if (!this.timerEnabled || this.gameState !== 'playing') {
+            return;
+        }
         
-        // Don't start timer for AI player in AI mode
-        if (this.gameMode === 'ai' && this.currentPlayer === this.players[1]) return;
-        
-        // Don't start timer for local multiplayer (offline) games
-        if (this.gameMode === 'local') return;
+        // Don't start timer for local multiplayer
+        if (this.gameMode === 'local') {
+            return;
+        }
         
         this.stopTimer(); // Clear any existing timer
+        
         this.timeLeft = 30;
         this.updateTimerDisplay();
+        
+        // Update online sidebar immediately
+        if (this.isOnlineGame) {
+            this.updateOnlineGameStatus();
+        }
         
         this.turnTimer = setInterval(() => {
             this.timeLeft--;
             this.updateTimerDisplay();
             
+            // Update online sidebar timer
+            if (this.isOnlineGame) {
+                this.updateOnlineGameStatus();
+            }
+            
             if (this.timeLeft <= 0) {
-                this.onTimerExpired();
+                this.stopTimer();
+                if (this.gameMode === 'online') {
+                    this.addOnlineMessage('Time\'s up!', 'system');
+                } else {
+                    this.handleTimeUp();
+                }
             }
         }, 1000);
     }
@@ -1025,23 +1042,22 @@ class ColorWarsGame {
 
     updateTimerDisplay() {
         const timerDisplay = document.getElementById('timer-display');
-        const timerContainer = document.getElementById('timer-container');
+        const onlineTimeLeft = document.getElementById('online-time-left');
         
         if (timerDisplay) {
             timerDisplay.textContent = this.timeLeft;
-            
-            // Add warning style when time is running out
-            if (this.timeLeft <= 10) {
-                timerContainer.classList.add('timer-warning');
-            } else {
-                timerContainer.classList.remove('timer-warning');
-            }
-            
-            // Add critical style when time is almost out
-            if (this.timeLeft <= 5) {
-                timerContainer.classList.add('timer-critical');
-            } else {
-                timerContainer.classList.remove('timer-critical');
+        }
+        
+        // Update online sidebar timer as well
+        if (onlineTimeLeft && this.isOnlineGame) {
+            onlineTimeLeft.textContent = this.timeLeft;
+            const onlineTimer = document.getElementById('online-timer');
+            if (onlineTimer) {
+                if (this.timeLeft <= 10) {
+                    onlineTimer.classList.add('warning');
+                } else {
+                    onlineTimer.classList.remove('warning');
+                }
             }
         }
     }
@@ -1144,6 +1160,9 @@ class ColorWarsGame {
         // Reset to local multiplayer if switching away from online
         if (mode !== 'online') {
             this.isOnlineGame = false;
+            this.stopGameTimer();
+            // Show regular sidebar when not in online mode
+            this.showRegularSidebar();
         }
         
         this.newGame();
@@ -1681,7 +1700,12 @@ class ColorWarsGame {
             }
         }
         
-        // Show waiting room UI
+        // Show online sidebar instead of waiting room UI
+        this.showOnlineSidebar();
+        this.addOnlineMessage(`Room created! Room ID: ${data.roomId}`, 'system');
+        this.addOnlineMessage('Share the Room ID with friends to invite them!', 'system');
+        
+        // Show waiting room UI in modal
         this.showWaitingRoomUI();
         this.updatePlayerCardsVisibility();
         this.updateHostUI();
@@ -1697,6 +1721,10 @@ class ColorWarsGame {
         // Update player information from game state
         this.updateConnectedPlayersFromGameState(data.gameState);
         
+        // Show online sidebar
+        this.showOnlineSidebar();
+        this.addOnlineMessage(`Joined room ${data.roomId}`, 'join');
+        
         // Check if game is ready to start or already started
         if (data.gameState.gameStatus === 'playing') {
             this.startOnlineGame(data.gameState);
@@ -1704,75 +1732,6 @@ class ColorWarsGame {
             // Show waiting room
             this.showWaitingRoom(data.gameState);
         }
-    }
-
-    handlePlayerJoined(data) {
-        // Update connected players information
-        this.updateConnectedPlayersFromGameState(data.gameState);
-        
-        // Update host status if necessary
-        if (data.gameState.hostId && data.gameState.hostId === this.socket.id) {
-            this.isHost = true;
-        }
-        
-        // Show notification that a player joined
-        this.showPlayerJoinedNotification(data.player);
-        
-        if (data.gameState.gameStatus === 'playing') {
-            this.startOnlineGame(data.gameState);
-        } else {
-            // Update UI to show new player joined
-            this.updatePlayerCardsVisibility();
-            this.updateHostUI();
-            this.updateWaitingRoomDisplay();
-        }
-    }
-
-    handleColorChanged(data) {
-        // Update the player's color in connected players
-        this.updateConnectedPlayersFromGameState(data.gameState);
-        
-        // If this is my color change, update my player color
-        if (data.playerId === this.socket.id) {
-            this.playerColor = data.newColor;
-        }
-        
-        // Update the waiting room display
-        this.updateWaitingRoomDisplay();
-        
-        // Show notification about color change
-        const playerName = this.connectedPlayers[data.newColor]?.name || 'A player';
-        this.showTurnNotification(`${playerName} changed to ${data.newColor}`, 'player-joined');
-    }
-
-    startOnlineGame(gameState) {
-        // Close the multiplayer modal
-        document.getElementById('multiplayer-modal').style.display = 'none';
-        
-        // Set up the game state
-        this.gameMode = 'online';
-        this.gameState = 'playing';
-        this.board = gameState.board;
-        this.currentPlayer = gameState.currentPlayer;
-        this.boardSize = gameState.boardSize;
-        this.moveHistory = gameState.moveHistory;
-        this.playerCount = gameState.playerCount;
-        this.players = gameState.players;
-        
-        // Update connected players information
-        this.updateConnectedPlayersFromGameState(gameState);
-        
-        // Update UI
-        this.renderBoard();
-        this.updatePlayerCardsVisibility();
-        this.updateUI();
-        this.updatePlayerStats();
-        
-        // Start timer now that the game is actually playing
-        this.startTimer();
-        
-        // Show room ID during gameplay
-        this.showRoomIdDuringGame();
     }
 
     updateConnectedPlayersFromGameState(gameState) {
@@ -1824,6 +1783,88 @@ class ColorWarsGame {
         }
     }
 
+    handlePlayerJoined(data) {
+        // Update connected players information
+        this.updateConnectedPlayersFromGameState(data.gameState);
+        
+        // Update host status if necessary
+        if (data.gameState.hostId && data.gameState.hostId === this.socket.id) {
+            this.isHost = true;
+        }
+        
+        // Show notification that a player joined
+        this.showPlayerJoinedNotification(data.player);
+        this.addOnlineMessage(`${data.player.name} joined the game`, 'join');
+        
+        // Update online sidebar
+        this.updateOnlineSidebarInfo();
+        
+        if (data.gameState.gameStatus === 'playing') {
+            this.startOnlineGame(data.gameState);
+        } else {
+            // Update UI to show new player joined
+            this.updatePlayerCardsVisibility();
+            this.updateHostUI();
+            this.updateWaitingRoomDisplay();
+        }
+    }
+
+    handleColorChanged(data) {
+        // Update the player's color in connected players
+        if (this.connectedPlayers[data.oldColor]) {
+            const playerData = this.connectedPlayers[data.oldColor];
+            delete this.connectedPlayers[data.oldColor];
+            this.connectedPlayers[data.newColor] = {
+                ...playerData,
+                color: data.newColor
+            };
+        }
+        
+        // Update online sidebar
+        this.updateOnlineSidebarInfo();
+        this.addOnlineMessage(`Player changed color to ${data.newColor}`, 'system');
+        
+        // Update waiting room display if visible
+        this.updateWaitingRoomDisplay();
+    }
+
+    startOnlineGame(gameState) {
+        // Close the multiplayer modal
+        document.getElementById('multiplayer-modal').style.display = 'none';
+        
+        // Set up the game state
+        this.gameMode = 'online';
+        this.gameState = 'playing';
+        this.board = gameState.board;
+        this.currentPlayer = gameState.currentPlayer;
+        this.boardSize = gameState.boardSize;
+        this.moveHistory = gameState.moveHistory;
+        this.playerCount = gameState.playerCount;
+        this.players = gameState.players;
+        
+        // Update connected players information
+        this.updateConnectedPlayersFromGameState(gameState);
+        
+        // Start game timer
+        this.startGameTimer();
+        
+        // Update online sidebar for game start
+        this.updateOnlineSidebarInfo();
+        this.addOnlineMessage('Game started! Good luck!', 'system');
+        
+        // Update UI
+        this.renderBoard();
+        this.updatePlayerCardsVisibility();
+        this.updateUI();
+        this.updatePlayerStats();
+        
+        // Start timer now that the game is actually playing
+        this.startTimer();
+        
+        // Show room ID during gameplay
+        this.showRoomIdDuringGame();
+    }
+
     handleOnlineMove(data) {
         // Store current game state before updating
         const wasAnimating = this.isAnimating;
@@ -1838,9 +1879,14 @@ class ColorWarsGame {
         this.clearAllAnimations();
         this.isAnimating = false;
         
+        // Update online sidebar with new game state
+        this.updateOnlineSidebarInfo();
+        
         if (data.gameState.gameStatus === 'ended') {
             this.showGameWinNotification(data.gameState.winner);
             this.endGame(data.gameState.winner);
+            this.stopGameTimer();
+            this.addOnlineMessage(`Game ended! Winner: ${data.gameState.winner}`, 'system');
         } else {
             // Force a complete re-render to ensure dots are properly displayed
             // Use a small delay to ensure cleanup is complete
@@ -1854,6 +1900,72 @@ class ColorWarsGame {
                     this.startTimer();
                 }
             }, 50);
+        }
+    }
+
+    handlePlayerDisconnected(data) {
+        // Update player information
+        if (this.connectedPlayers[data.player.color]) {
+            this.connectedPlayers[data.player.color].connected = false;
+            this.connectedPlayers[data.player.color].name = 'Waiting...';
+        }
+        
+        this.addOnlineMessage(`${data.player.name} left the game`, 'leave');
+        
+        // Update online sidebar
+        this.updateOnlineSidebarInfo();
+        
+        // Update waiting room if in waiting state
+        if (this.gameState === 'waiting') {
+            this.updateWaitingRoomDisplay();
+        }
+        
+        // Show disconnection notification
+        this.showPlayerDisconnectedNotification(data.player);
+    }
+
+    updateConnectionStatus(status, message) {
+        const statusIndicator = document.getElementById('online-status-indicator');
+        const statusText = document.getElementById('online-status-text');
+        
+        if (statusIndicator && statusText) {
+            statusIndicator.className = `status-indicator ${status}`;
+            statusText.textContent = message;
+        }
+        
+        if (this.isOnlineGame) {
+            this.addOnlineMessage(message, 'system');
+        }
+    }
+
+    updateTurnTimer() {
+        if (this.turnTimer) {
+            clearInterval(this.turnTimer);
+        }
+        
+        this.timeLeft = 30;
+        
+        if (this.timerEnabled && this.gameState === 'playing') {
+            // Update online sidebar timer immediately
+            this.updateOnlineGameStatus();
+            
+            this.turnTimer = setInterval(() => {
+                this.timeLeft--;
+                
+                // Update both regular timer and online sidebar timer
+                this.updateTimerDisplay();
+                this.updateOnlineGameStatus();
+                
+                if (this.timeLeft <= 0) {
+                    this.stopTimer();
+                    if (this.gameMode === 'online') {
+                        // In online mode, server handles timeout
+                        this.addOnlineMessage('Time\'s up!', 'system');
+                    } else {
+                        this.handleTimeUp();
+                    }
+                }
+            }, 1000);
         }
     }
 
@@ -1928,15 +2040,29 @@ class ColorWarsGame {
         this.playSound('win');
     }
 
-    handlePlayerDisconnected(data) {
-        // Update connected players information
-        this.updateConnectedPlayersFromGameState(data.gameState);
+    showPlayerDisconnectedNotification(player) {
+        // Create a notification for player leaving
+        const notification = document.createElement('div');
+        notification.className = 'disconnected-notification';
+        notification.textContent = `${player.name} has left the game.`;
         
-        // Show notification that a player disconnected
-        this.showTurnNotification('A player disconnected from the game', 'player-left');
+        // Add to page
+        document.body.appendChild(notification);
         
-        // Update UI
-        this.updatePlayerCardsVisibility();
+        // Show notification
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 100);
+        
+        // Hide notification after 3 seconds
+        setTimeout(() => {
+            notification.classList.add('hide');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 500);
+        }, 3000);
     }
 
     handleRoomReady(data) {
@@ -2051,25 +2177,21 @@ class ColorWarsGame {
     }
 
     showWaitingRoomUI() {
-        // Add room created animation and show waiting room
+        const multiplayerModal = document.getElementById('multiplayer-modal');
         const roomInfo = document.getElementById('room-info');
-        const multiplayerContent = document.querySelector('.multiplayer-content');
         
-        if (roomInfo && multiplayerContent) {
-            // Hide the create/join sections
-            const sections = multiplayerContent.querySelectorAll('.multiplayer-section, .multiplayer-divider');
-            sections.forEach(section => {
-                section.style.display = 'none';
-            });
-            
-            // Show room info with animation
+        if (multiplayerModal) {
+            multiplayerModal.style.display = 'block';
+        }
+        
+        if (roomInfo) {
             roomInfo.style.display = 'block';
-            roomInfo.classList.add('room-created-animation');
-            
-            // Remove animation class after animation completes
-            setTimeout(() => {
-                roomInfo.classList.remove('room-created-animation');
-            }, 500);
+        }
+        
+        // Update online sidebar if it's visible
+        if (this.isOnlineGame) {
+            this.updateOnlineSidebarInfo();
+            this.addOnlineMessage('Waiting for players to join...', 'system');
         }
     }
 
@@ -2094,6 +2216,377 @@ class ColorWarsGame {
                 <button class="room-id-copy" onclick="navigator.clipboard.writeText('${this.currentRoomId}')">📋</button>
             `;
             roomIdDisplay.style.display = 'flex';
+        }
+    }
+
+    setupOnlineSidebarEvents() {
+        // Copy Room ID button
+        const copyRoomBtn = document.getElementById('copy-room-btn');
+        if (copyRoomBtn) {
+            copyRoomBtn.addEventListener('click', () => this.copyRoomId());
+        }
+
+        // Leave Room button
+        const leaveRoomBtn = document.getElementById('leave-room-btn');
+        if (leaveRoomBtn) {
+            leaveRoomBtn.addEventListener('click', () => this.leaveOnlineRoom());
+        }
+
+        // Invite Friends button
+        const inviteFriendsBtn = document.getElementById('invite-friends-btn');
+        if (inviteFriendsBtn) {
+            inviteFriendsBtn.addEventListener('click', () => this.showInviteFriends());
+        }
+
+        // Online Settings button
+        const onlineSettingsBtn = document.getElementById('online-settings-btn');
+        if (onlineSettingsBtn) {
+            onlineSettingsBtn.addEventListener('click', () => this.showOnlineSettings());
+        }
+
+        // Start Online Game button
+        const startOnlineGameBtn = document.getElementById('start-online-game-btn');
+        if (startOnlineGameBtn) {
+            startOnlineGameBtn.addEventListener('click', () => this.startGame());
+        }
+    }
+
+    showOnlineSidebar() {
+        const regularSidebar = document.getElementById('regular-sidebar');
+        const onlineSidebar = document.getElementById('online-sidebar');
+        
+        if (regularSidebar && onlineSidebar) {
+            // Add transition class for smooth animation
+            regularSidebar.style.opacity = '0';
+            setTimeout(() => {
+                regularSidebar.style.display = 'none';
+                onlineSidebar.style.display = 'block';
+                onlineSidebar.style.opacity = '0';
+                
+                // Trigger reflow
+                onlineSidebar.offsetHeight;
+                
+                onlineSidebar.style.opacity = '1';
+                this.updateOnlineSidebarInfo();
+            }, 150);
+        }
+    }
+
+    showRegularSidebar() {
+        const regularSidebar = document.getElementById('regular-sidebar');
+        const onlineSidebar = document.getElementById('online-sidebar');
+        
+        if (regularSidebar && onlineSidebar) {
+            // Add transition class for smooth animation
+            onlineSidebar.style.opacity = '0';
+            setTimeout(() => {
+                onlineSidebar.style.display = 'none';
+                regularSidebar.style.display = 'block';
+                regularSidebar.style.opacity = '0';
+                
+                // Trigger reflow
+                regularSidebar.offsetHeight;
+                
+                regularSidebar.style.opacity = '1';
+            }, 150);
+        }
+    }
+
+    updateOnlineSidebarInfo() {
+        if (!this.isOnlineGame) return;
+
+        // Update room information
+        this.updateRoomInfo();
+        
+        // Update players list
+        this.updateOnlinePlayersList();
+        
+        // Update game status
+        this.updateOnlineGameStatus();
+        
+        // Update controls visibility
+        this.updateOnlineControls();
+        
+        // Update statistics
+        this.updateOnlineStats();
+    }
+
+    updateRoomInfo() {
+        const roomIdElement = document.getElementById('online-room-id');
+        const statusIndicator = document.getElementById('online-status-indicator');
+        const statusText = document.getElementById('online-status-text');
+
+        if (roomIdElement && this.currentRoomId) {
+            roomIdElement.textContent = this.currentRoomId;
+        }
+
+        if (statusIndicator && statusText) {
+            if (this.socket && this.socket.connected) {
+                statusIndicator.className = 'status-indicator connected';
+                statusText.textContent = 'Connected';
+            } else {
+                statusIndicator.className = 'status-indicator disconnected';
+                statusText.textContent = 'Disconnected';
+            }
+        }
+    }
+
+    updateOnlinePlayersList() {
+        const playersList = document.getElementById('online-players-list');
+        if (!playersList) return;
+
+        playersList.innerHTML = '';
+
+        // Create player cards for all expected players
+        for (let i = 0; i < this.playerCount; i++) {
+            const color = this.players[i];
+            const playerCard = document.createElement('div');
+            playerCard.className = 'online-player-card';
+            playerCard.id = `online-player-${color}`;
+
+            if (this.connectedPlayers[color]) {
+                const player = this.connectedPlayers[color];
+                
+                if (player.connected) {
+                    playerCard.classList.remove('waiting');
+                    if (this.currentPlayer === color && this.gameState === 'playing') {
+                        playerCard.classList.add('current-turn');
+                    }
+                } else {
+                    playerCard.classList.add('waiting');
+                }
+
+                playerCard.innerHTML = `
+                    <div class="online-player-color player-${color}">
+                        <div class="color-indicator ${player.connected ? 'connected' : 'disconnected'}"></div>
+                    </div>
+                    <div class="online-player-info">
+                        <div class="online-player-name">${player.name}</div>
+                        <div class="online-player-status">${player.connected ? 'Connected' : 'Waiting...'}</div>
+                    </div>
+                    <div class="online-player-cells">${this.countPlayerCells(color)}</div>
+                `;
+            } else {
+                playerCard.classList.add('waiting');
+                playerCard.innerHTML = `
+                    <div class="online-player-color player-${color}">
+                        <div class="color-indicator disconnected"></div>
+                    </div>
+                    <div class="online-player-info">
+                        <div class="online-player-name">Waiting...</div>
+                        <div class="online-player-status">Open slot</div>
+                    </div>
+                    <div class="online-player-cells">0</div>
+                `;
+            }
+
+            playersList.appendChild(playerCard);
+        }
+    }
+
+    updateOnlineGameStatus() {
+        const gamePhase = document.getElementById('online-game-phase');
+        const turnInfo = document.getElementById('online-turn-info');
+        const currentPlayerSpan = document.getElementById('online-current-player');
+        const timeLeft = document.getElementById('online-time-left');
+
+        if (!gamePhase) return;
+
+        if (this.gameState === 'waiting') {
+            gamePhase.textContent = 'Waiting for players...';
+            if (turnInfo) turnInfo.style.display = 'none';
+        } else if (this.gameState === 'playing') {
+            gamePhase.textContent = 'Game in progress';
+            if (turnInfo) {
+                turnInfo.style.display = 'flex';
+                if (currentPlayerSpan) {
+                    const playerName = this.connectedPlayers[this.currentPlayer]?.name?.replace(' (You)', '') || 
+                                     `${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)} Player`;
+                    currentPlayerSpan.textContent = `${playerName}'s turn`;
+                }
+                if (timeLeft) {
+                    timeLeft.textContent = this.timeLeft;
+                    const timerElement = document.getElementById('online-timer');
+                    if (timerElement) {
+                        if (this.timeLeft <= 10) {
+                            timerElement.classList.add('warning');
+                        } else {
+                            timerElement.classList.remove('warning');
+                        }
+                    }
+                }
+            }
+        } else if (this.gameState === 'ended') {
+            gamePhase.textContent = 'Game finished';
+            if (turnInfo) turnInfo.style.display = 'none';
+        }
+    }
+
+    updateOnlineControls() {
+        const startGameBtn = document.getElementById('start-online-game-btn');
+        
+        if (startGameBtn) {
+            if (this.isHost && this.gameState === 'waiting') {
+                // Check if all players are connected
+                const connectedCount = Object.values(this.connectedPlayers).filter(p => p.connected).length;
+                if (connectedCount >= 2) {
+                    startGameBtn.style.display = 'block';
+                    startGameBtn.disabled = false;
+                } else {
+                    startGameBtn.style.display = 'block';
+                    startGameBtn.disabled = true;
+                    startGameBtn.textContent = `Waiting for players (${connectedCount}/${this.playerCount})`;
+                }
+            } else {
+                startGameBtn.style.display = 'none';
+            }
+        }
+    }
+
+    updateOnlineStats() {
+        const totalMovesElement = document.getElementById('total-moves-count');
+        const gameTimeElement = document.getElementById('game-time-display');
+
+        if (totalMovesElement) {
+            totalMovesElement.textContent = this.moveHistory.length;
+        }
+
+        if (gameTimeElement && this.gameStartTime) {
+            const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            gameTimeElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+    }
+
+    startGameTimer() {
+        this.gameStartTime = Date.now();
+        this.gameTimeInterval = setInterval(() => {
+            this.updateOnlineStats();
+        }, 1000);
+    }
+
+    stopGameTimer() {
+        if (this.gameTimeInterval) {
+            clearInterval(this.gameTimeInterval);
+            this.gameTimeInterval = null;
+        }
+    }
+
+    addOnlineMessage(message, type = 'system') {
+        const messagesContainer = document.getElementById('messages-container');
+        if (!messagesContainer) return;
+
+        const messageElement = document.createElement('div');
+        messageElement.className = `message ${type}-message`;
+        messageElement.innerHTML = `<span class="message-text">${message}</span>`;
+
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Keep only last 10 messages
+        const messages = messagesContainer.querySelectorAll('.message');
+        if (messages.length > 10) {
+            messages[0].remove();
+        }
+    }
+
+    copyRoomId() {
+        if (this.currentRoomId) {
+            navigator.clipboard.writeText(this.currentRoomId).then(() => {
+                this.addOnlineMessage('Room ID copied to clipboard!', 'system');
+                
+                // Show visual feedback
+                const copyBtn = document.getElementById('copy-room-btn');
+                if (copyBtn) {
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = '✓';
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                    }, 1000);
+                }
+            }).catch(() => {
+                this.addOnlineMessage('Failed to copy Room ID', 'system');
+            });
+        }
+    }
+
+    leaveOnlineRoom() {
+        if (this.socket && this.currentRoomId) {
+            this.socket.emit('leaveRoom');
+            this.isOnlineGame = false;
+            this.connectedPlayers = {};
+            this.currentRoomId = null;
+            this.gameState = 'playing';
+            this.stopGameTimer();
+            
+            // Show regular sidebar
+            this.showRegularSidebar();
+            
+            // Reset to local game
+            this.gameMode = 'local';
+            this.newGame();
+            
+            this.addOnlineMessage('Left the room', 'leave');
+        }
+    }
+
+    showInviteFriends() {
+        if (this.currentRoomId) {
+            const shareText = `Join my ColorWars game! Room ID: ${this.currentRoomId}`;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'ColorWars Game Invitation',
+                    text: shareText,
+                    url: window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(shareText).then(() => {
+                    this.addOnlineMessage('Invitation copied to clipboard!', 'system');
+                });
+            }
+        }
+    }
+
+    showOnlineSettings() {
+        // Could open a modal with online-specific settings
+        alert('Online settings coming soon!');
+    }
+
+    handleTimeUp() {
+        // Handle time expiration for non-online games
+        if (this.gameMode === 'ai') {
+            // In AI mode, automatically make AI move if it's AI's turn
+            if (this.currentPlayer === this.players[1]) {
+                this.makeAIMove();
+            } else {
+                // Skip human player's turn
+                this.switchPlayer();
+                if (this.currentPlayer === this.players[1]) {
+                    setTimeout(() => this.makeAIMove(), 500);
+                }
+            }
+        } else if (this.gameMode === 'local') {
+            // In local mode, just switch to next player
+            this.switchPlayer();
+        }
+        
+        this.playSound('place'); // Play notification sound
+        this.updateUI();
+        this.startTimer(); // Start timer for next player
+    }
+
+    // Improved modal handling for online games
+    closeMultiplayerModal() {
+        const modal = document.getElementById('multiplayer-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        
+        // If we were in an online game and close the modal, stay in online mode
+        if (this.isOnlineGame && this.gameState === 'playing') {
+            // Keep online sidebar visible during gameplay
+            this.showOnlineSidebar();
         }
     }
 }

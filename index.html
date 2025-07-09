@@ -17,7 +17,8 @@
         </header>
 
         <div class="game-interface">
-            <div class="game-sidebar">
+            <!-- Regular Game Sidebar -->
+            <div class="game-sidebar" id="regular-sidebar">
                 <div class="player-info" id="player-info">
                     <div class="player-card active" id="player1-card">
                         <div class="player-color player-red"></div>
@@ -87,6 +88,83 @@
                             <span class="checkmark"></span>
                             Animations
                         </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Online Game Sidebar -->
+            <div class="game-sidebar online-sidebar" id="online-sidebar" style="display: none;">
+                <!-- Room Information -->
+                <div class="online-section room-section">
+                    <h3 class="section-title">🔗 Room Info</h3>
+                    <div class="room-details-card">
+                        <div class="room-id-display">
+                            <label>Room ID:</label>
+                            <span id="online-room-id">------</span>
+                            <button class="btn btn-mini" id="copy-room-btn" title="Copy Room ID">📋</button>
+                        </div>
+                        <div class="connection-status-display">
+                            <span class="status-indicator" id="online-status-indicator">●</span>
+                            <span id="online-status-text">Connecting...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Players List -->
+                <div class="online-section players-section">
+                    <h3 class="section-title">👥 Players</h3>
+                    <div class="online-players-list" id="online-players-list">
+                        <!-- Dynamic player cards will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Game State Info -->
+                <div class="online-section game-state-section">
+                    <h3 class="section-title">🎮 Game Status</h3>
+                    <div class="game-state-card">
+                        <div class="current-phase" id="online-game-phase">Waiting for players...</div>
+                        <div class="turn-info" id="online-turn-info" style="display: none;">
+                            <span id="online-current-player">Red Player</span>
+                            <div class="online-timer" id="online-timer">
+                                <span id="online-time-left">30</span>s
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Online Controls -->
+                <div class="online-section controls-section">
+                    <h3 class="section-title">⚙️ Controls</h3>
+                    <div class="online-controls">
+                        <button class="btn btn-primary" id="start-online-game-btn" style="display: none;">Start Game</button>
+                        <button class="btn btn-secondary" id="leave-room-btn">Leave Room</button>
+                        <button class="btn btn-secondary" id="invite-friends-btn">Invite Friends</button>
+                        <button class="btn btn-secondary" id="online-settings-btn">Settings</button>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="online-section stats-section">
+                    <h3 class="section-title">📊 Live Stats</h3>
+                    <div class="online-stats" id="online-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Moves:</span>
+                            <span class="stat-value" id="total-moves-count">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Game Time:</span>
+                            <span class="stat-value" id="game-time-display">0:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat/Messages -->
+                <div class="online-section messages-section">
+                    <h3 class="section-title">💬 Messages</h3>
+                    <div class="messages-container" id="messages-container">
+                        <div class="message system-message">
+                            <span class="message-text">Welcome to ColorWars Online!</span>
+                        </div>
                     </div>
                 </div>
             </div>
