@@ -243,79 +243,290 @@
     <div class="modal" id="multiplayer-modal">
         <div class="modal-content">
             <span class="close" id="close-multiplayer">&times;</span>
-            <h2>Online Multiplayer</h2>
+            <h2>🌐 Online Multiplayer</h2>
             <div class="multiplayer-content">
                 <div class="multiplayer-section">
-                    <h3>Create Room</h3>
-                    <p>Create a new room and invite your friends!</p>
+                    <h3>🚀 Create Room</h3>
+                    <p>Create a new room and invite your friends to battle!</p>
                     <div class="input-group">
-                        <input type="text" id="create-player-name" placeholder="Enter your name" maxlength="20">
+                        <input type="text" id="create-player-name" placeholder="🎮 Enter your name" maxlength="20">
                         <div class="color-selection-group">
-                            <label for="create-player-color">Choose your color:</label>
+                            <label for="create-player-color">🎨 Choose your color:</label>
                             <select id="create-player-color" class="player-color-select">
-                                <option value="red">Red</option>
-                                <option value="blue" selected>Blue</option>
-                                <option value="green">Green</option>
-                                <option value="yellow">Yellow</option>
+                                <option value="red">🔴 Red</option>
+                                <option value="blue" selected>🔵 Blue</option>
+                                <option value="green">🟢 Green</option>
+                                <option value="yellow">🟡 Yellow</option>
                             </select>
                         </div>
-                        <button class="btn btn-primary" id="create-room-btn">Create Room</button>
+                        <button class="btn btn-primary" id="create-room-btn">
+                            <span>Create Room</span>
+                        </button>
                     </div>
                 </div>
                 
-                <div class="multiplayer-divider">OR</div>
+                <div class="multiplayer-divider"></div>
                 
                 <div class="multiplayer-section">
-                    <h3>Join Room</h3>
+                    <h3>🔗 Join Room</h3>
                     <p>Join a friend's room using their Room ID</p>
                     <div class="input-group">
-                        <input type="text" id="join-player-name" placeholder="Enter your name" maxlength="20">
-                        <input type="text" id="room-id-input" placeholder="Enter Room ID" maxlength="8">
+                        <input type="text" id="join-player-name" placeholder="🎮 Enter your name" maxlength="20">
+                        <input type="text" id="room-id-input" placeholder="🔑 Enter Room ID" maxlength="8">
                         <div class="color-selection-group">
-                            <label for="join-player-color">Choose your color:</label>
+                            <label for="join-player-color">🎨 Choose your color:</label>
                             <select id="join-player-color" class="player-color-select">
-                                <option value="red">Red</option>
-                                <option value="blue">Blue</option>
-                                <option value="green">Green</option>
-                                <option value="yellow" selected>Yellow</option>
+                                <option value="red">🔴 Red</option>
+                                <option value="blue">🔵 Blue</option>
+                                <option value="green">🟢 Green</option>
+                                <option value="yellow" selected>🟡 Yellow</option>
                             </select>
                         </div>
-                        <button class="btn btn-primary" id="join-room-btn">Join Room</button>
+                        <button class="btn btn-primary" id="join-room-btn">
+                            <span>Join Room</span>
+                        </button>
                     </div>
                 </div>
                 
                 <div class="room-info" id="room-info" style="display: none;">
-                    <h3>Room Created!</h3>
+                    <h3>Room Created Successfully!</h3>
                     <div class="room-details">
-                        <p><strong>Room ID:</strong> <span id="current-room-id"></span></p>
-                        <p><strong>Share this ID with your friend to join!</strong></p>
-                        <button class="btn btn-secondary" id="copy-room-id">Copy Room ID</button>
+                        <p><strong>Room ID:</strong> <span id="current-room-id">------</span></p>
+                        <p><strong>📋 Share this ID with friends to invite them!</strong></p>
+                        <button class="btn btn-secondary" id="copy-room-id">📋 Copy Room ID</button>
                     </div>
                     
                     <div class="waiting-room-colors" id="waiting-room-colors">
-                        <h4>Player Colors</h4>
-                        <div id="waiting-room-player-list"></div>
+                        <h4>👥 Players in Room</h4>
+                        <div id="waiting-room-players-list">
+                            <!-- Player list will be populated dynamically -->
+                        </div>
+                        
                         <div class="my-color-selection" id="my-color-selection">
-                            <label for="waiting-room-color">Your color:</label>
-                            <select id="waiting-room-color" class="player-color-select">
-                                <option value="red">Red</option>
-                                <option value="blue">Blue</option>
-                                <option value="green">Green</option>
-                                <option value="yellow">Yellow</option>
+                            <label for="waiting-room-color-select">🎨 Change your color:</label>
+                            <select id="waiting-room-color-select" class="player-color-select">
+                                <option value="red">🔴 Red</option>
+                                <option value="blue">🔵 Blue</option>
+                                <option value="green">🟢 Green</option>
+                                <option value="yellow">🟡 Yellow</option>
                             </select>
                         </div>
                     </div>
                     
-                    <div class="waiting-message">
-                        <p>Waiting for opponents to join...</p>
-                        <p><small>You are the host - you can start the game when everyone joins!</small></p>
+                    <div class="waiting-message" id="waiting-message">
                         <div class="loading-spinner"></div>
+                        <p><strong>⏳ Waiting for players to join...</strong></p>
+                        <small>Game will start automatically when all players are ready</small>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Online Settings Modal -->
+    <div class="modal" id="online-settings-modal">
+        <div class="modal-content">
+            <span class="close" id="close-online-settings">&times;</span>
+            <h2>⚙️ Online Game Settings</h2>
+            <div class="settings-content">
                 
-                <div class="connection-status" id="connection-status">
-                    <span class="status-indicator" id="status-indicator">●</span>
-                    <span id="status-text">Connecting...</span>
+                <!-- Game Configuration -->
+                <div class="settings-section">
+                    <h3>🎮 Game Configuration</h3>
+                    <div class="setting-group">
+                        <label for="online-timer-enabled">⏱️ Enable Turn Timer</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="online-timer-enabled" checked>
+                            <span class="slider"></span>
+                        </div>
+                    </div>
+                    <div class="setting-group" id="timer-duration-group">
+                        <label for="online-timer-duration">⏰ Turn Timer Duration</label>
+                        <div class="slider-container">
+                            <input type="range" id="online-timer-duration" min="10" max="180" value="30" step="5">
+                            <span class="slider-value"><span id="timer-value">30</span> seconds</span>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label for="auto-start-enabled">🚀 Auto-start Game</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="auto-start-enabled" checked>
+                            <span class="slider"></span>
+                        </div>
+                        <small>Automatically start when all players join</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="rematch-enabled">🔄 Enable Rematch</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="rematch-enabled" checked>
+                            <span class="slider"></span>
+                        </div>
+                        <small>Allow instant rematch after game ends</small>
+                    </div>
+                </div>
+
+                <!-- Room Settings -->
+                <div class="settings-section">
+                    <h3>🏠 Room Settings</h3>
+                    <div class="setting-group">
+                        <label for="room-privacy">🔒 Room Privacy</label>
+                        <select id="room-privacy" class="setting-select">
+                            <option value="public">🌐 Public - Anyone can join</option>
+                            <option value="private" selected>🔐 Private - Invite only</option>
+                            <option value="friends">👥 Friends only</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="max-players">👥 Maximum Players</label>
+                        <select id="max-players" class="setting-select">
+                            <option value="2" selected>2 Players</option>
+                            <option value="3">3 Players</option>
+                            <option value="4">4 Players</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="spectator-mode">👁️ Allow Spectators</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="spectator-mode">
+                            <span class="slider"></span>
+                        </div>
+                        <small>Let others watch your game</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="reconnect-timeout">🔌 Reconnection Timeout</label>
+                        <div class="slider-container">
+                            <input type="range" id="reconnect-timeout" min="30" max="300" value="60" step="30">
+                            <span class="slider-value"><span id="reconnect-value">60</span> seconds</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio & Visual -->
+                <div class="settings-section">
+                    <h3>🎨 Audio & Visual</h3>
+                    <div class="setting-group">
+                        <label for="sound-effects">🔊 Sound Effects</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="sound-effects" checked>
+                            <span class="slider"></span>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label for="move-animations">✨ Move Animations</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="move-animations" checked>
+                            <span class="slider"></span>
+                        </div>
+                        <small>Smooth animations for dot placement</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="turn-notifications">🔔 Turn Notifications</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="turn-notifications" checked>
+                            <span class="slider"></span>
+                        </div>
+                        <small>Browser notifications for your turn</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="color-theme">🎨 Color Theme</label>
+                        <select id="color-theme" class="setting-select">
+                            <option value="default" selected>🌈 Default (Colorful)</option>
+                            <option value="pastel">🌸 Pastel Colors</option>
+                            <option value="neon">⚡ Neon Bright</option>
+                            <option value="monochrome">⚫ Monochrome</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Communication -->
+                <div class="settings-section">
+                    <h3>💬 Communication</h3>
+                    <div class="setting-group">
+                        <label for="chat-enabled">💬 Enable Chat</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="chat-enabled" checked>
+                            <span class="slider"></span>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label for="emoji-reactions">😀 Emoji Reactions</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="emoji-reactions" checked>
+                            <span class="slider"></span>
+                        </div>
+                        <small>Quick emoji reactions during gameplay</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="status-sharing">📊 Share Game Status</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="status-sharing">
+                            <span class="slider"></span>
+                        </div>
+                        <small>Show "Playing ColorWars" in your status</small>
+                    </div>
+                </div>
+
+                <!-- Performance & Network -->
+                <div class="settings-section">
+                    <h3>⚡ Performance & Network</h3>
+                    <div class="setting-group">
+                        <label for="connection-quality">📶 Connection Quality</label>
+                        <select id="connection-quality" class="setting-select">
+                            <option value="auto" selected>🔄 Auto (Recommended)</option>
+                            <option value="high">⚡ High Quality</option>
+                            <option value="balanced">⚖️ Balanced</option>
+                            <option value="low">📱 Data Saver</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="sync-frequency">🔄 Sync Frequency</label>
+                        <div class="slider-container">
+                            <input type="range" id="sync-frequency" min="100" max="1000" value="250" step="50">
+                            <span class="slider-value"><span id="sync-value">250</span>ms</span>
+                        </div>
+                        <small>How often to sync game state</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="lag-compensation">🎯 Lag Compensation</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="lag-compensation" checked>
+                            <span class="slider"></span>
+                        </div>
+                        <small>Predict moves to reduce lag</small>
+                    </div>
+                </div>
+
+                <!-- Privacy & Security -->
+                <div class="settings-section">
+                    <h3>🔐 Privacy & Security</h3>
+                    <div class="setting-group">
+                        <label for="anonymous-mode">🕶️ Anonymous Mode</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="anonymous-mode">
+                            <span class="slider"></span>
+                        </div>
+                        <small>Hide your name from other players</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="block-invites">🚫 Block Random Invites</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="block-invites">
+                            <span class="slider"></span>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label for="data-usage">📊 Data Usage Tracking</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="data-usage">
+                            <span class="slider"></span>
+                        </div>
+                        <small>Track network usage statistics</small>
+                    </div>
+                </div>
+
+                <div class="settings-actions">
+                    <button class="btn btn-secondary" id="reset-online-settings">🔄 Reset to Defaults</button>
+                    <button class="btn btn-primary" id="save-online-settings">💾 Save Settings</button>
                 </div>
             </div>
         </div>
