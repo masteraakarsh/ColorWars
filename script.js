@@ -47,6 +47,7 @@ class ColorWarsGame {
         this.initializeGame();
         this.setupEventListeners();
         this.setupOnlineSidebarEvents();
+        this.setupModalCloseEvents();
     }
 
     checkServerAvailability() {
@@ -1601,10 +1602,43 @@ class ColorWarsGame {
         const modal = document.getElementById('multiplayer-modal');
         modal.style.display = 'block';
         
+        // If not in an online game, reset the modal to initial state
+        if (!this.isOnlineGame) {
+            this.resetMultiplayerModal();
+        }
+        
         // Initialize Socket.IO if not already done
         if (!this.socket) {
             this.initializeSocket();
         }
+    }
+
+    resetMultiplayerModal() {
+        const roomInfo = document.getElementById('room-info');
+        const createSection = document.querySelector('.multiplayer-section:first-of-type');
+        const joinSection = document.querySelector('.multiplayer-section:last-of-type');
+        const divider = document.querySelector('.multiplayer-divider');
+
+        // Hide room info
+        if (roomInfo) {
+            roomInfo.style.display = 'none';
+            roomInfo.classList.remove('room-created-animation');
+        }
+
+        // Show create and join sections
+        if (createSection) {
+            createSection.style.display = 'block';
+        }
+        if (joinSection) {
+            joinSection.style.display = 'block';
+        }
+        if (divider) {
+            divider.style.display = 'block';
+        }
+
+        // Clear form inputs
+        const inputs = document.querySelectorAll('#multiplayer-modal input[type="text"]');
+        inputs.forEach(input => input.value = '');
     }
 
     initializeSocket() {
@@ -1866,10 +1900,10 @@ class ColorWarsGame {
     }
 
     handleOnlineMove(data) {
-        // Store current game state before updating
-        const wasAnimating = this.isAnimating;
+        // Clear any "move sent" messages
+        this.addOnlineMessage(`${data.player.name} made a move`, 'system');
         
-        // Update board state from server
+        // Update board state from server immediately
         this.board = data.gameState.board;
         this.currentPlayer = data.gameState.currentPlayer;
         this.moveHistory = data.gameState.moveHistory;
@@ -1878,6 +1912,11 @@ class ColorWarsGame {
         // Comprehensive cleanup of all animations before updating
         this.clearAllAnimations();
         this.isAnimating = false;
+        
+        // Immediately update the board and UI
+        this.renderBoard();
+        this.updateUI();
+        this.updatePlayerStats();
         
         // Update online sidebar with new game state
         this.updateOnlineSidebarInfo();
@@ -1888,19 +1927,24 @@ class ColorWarsGame {
             this.stopGameTimer();
             this.addOnlineMessage(`Game ended! Winner: ${data.gameState.winner}`, 'system');
         } else {
-            // Force a complete re-render to ensure dots are properly displayed
-            // Use a small delay to ensure cleanup is complete
-            setTimeout(() => {
-                this.renderBoard();
-                this.updateUI();
-                this.updatePlayerStats();
-                
-                // Restart timer for the new current player (but only if not in waiting state)
-                if (this.gameState === 'playing') {
-                    this.startTimer();
+            // Start timer for the new current player
+            if (this.gameState === 'playing') {
+                this.startTimer();
+            }
+            
+            // Show whose turn it is
+            const currentPlayerInfo = this.connectedPlayers[this.currentPlayer];
+            if (currentPlayerInfo) {
+                if (this.currentPlayer === this.playerColor) {
+                    this.addOnlineMessage('Your turn!', 'system');
+                } else {
+                    this.addOnlineMessage(`${currentPlayerInfo.name}'s turn`, 'system');
                 }
-            }, 50);
+            }
         }
+        
+        // Play sound for the move
+        this.playSound('place');
     }
 
     handlePlayerDisconnected(data) {
@@ -1971,10 +2015,27 @@ class ColorWarsGame {
 
     async makeOnlineMove(row, col) {
         if (this.playerColor !== this.currentPlayer) {
+            this.addOnlineMessage('It\'s not your turn!', 'system');
             return;
         }
         
+        // Provide immediate visual feedback
+        const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (cellElement) {
+            cellElement.classList.add('placing-dot');
+            setTimeout(() => {
+                cellElement.classList.remove('placing-dot');
+            }, 600);
+        }
+        
+        // Stop timer for this turn
+        this.stopTimer();
+        
+        // Send move to server
         this.socket.emit('makeMove', { row, col });
+        
+        // Show that move is being processed
+        this.addOnlineMessage('Move sent...', 'system');
     }
 
     createRoom(playerName, playerColor) {
@@ -2179,13 +2240,29 @@ class ColorWarsGame {
     showWaitingRoomUI() {
         const multiplayerModal = document.getElementById('multiplayer-modal');
         const roomInfo = document.getElementById('room-info');
+        const createSection = document.querySelector('.multiplayer-section:first-of-type');
+        const joinSection = document.querySelector('.multiplayer-section:last-of-type');
+        const divider = document.querySelector('.multiplayer-divider');
         
         if (multiplayerModal) {
             multiplayerModal.style.display = 'block';
         }
         
+        // Hide create and join sections
+        if (createSection) {
+            createSection.style.display = 'none';
+        }
+        if (joinSection) {
+            joinSection.style.display = 'none';
+        }
+        if (divider) {
+            divider.style.display = 'none';
+        }
+        
+        // Show room info section
         if (roomInfo) {
             roomInfo.style.display = 'block';
+            roomInfo.classList.add('room-created-animation');
         }
         
         // Update online sidebar if it's visible
@@ -2527,6 +2604,9 @@ class ColorWarsGame {
             this.gameMode = 'local';
             this.newGame();
             
+            // Reset multiplayer modal to initial state
+            this.resetMultiplayerModal();
+            
             this.addOnlineMessage('Left the room', 'leave');
         }
     }
@@ -2549,8 +2629,162 @@ class ColorWarsGame {
     }
 
     showOnlineSettings() {
-        // Could open a modal with online-specific settings
-        alert('Online settings coming soon!');
+        const settingsModal = document.getElementById('online-settings-modal');
+        if (settingsModal) {
+            settingsModal.style.display = 'block';
+            this.loadOnlineSettings();
+        }
+    }
+
+    loadOnlineSettings() {
+        // Load saved settings from localStorage or use defaults
+        const settings = JSON.parse(localStorage.getItem('colorwars-online-settings') || '{}');
+        
+        // Apply settings to form elements
+        this.applySettingsToForm(settings);
+        
+        // Set up settings form event listeners
+        this.setupOnlineSettingsEvents();
+    }
+
+    applySettingsToForm(settings) {
+        const elements = {
+            'online-timer-enabled': settings.timerEnabled !== false,
+            'online-timer-duration': settings.timerDuration || 30,
+            'auto-start-enabled': settings.autoStart !== false,
+            'rematch-enabled': settings.rematchEnabled !== false,
+            'room-privacy': settings.roomPrivacy || 'private',
+            'max-players': settings.maxPlayers || '2',
+            'spectator-mode': settings.spectatorMode || false,
+            'reconnect-timeout': settings.reconnectTimeout || 60,
+            'sound-effects': settings.soundEffects !== false,
+            'move-animations': settings.moveAnimations !== false,
+            'turn-notifications': settings.turnNotifications !== false,
+            'color-theme': settings.colorTheme || 'default',
+            'chat-enabled': settings.chatEnabled !== false,
+            'emoji-reactions': settings.emojiReactions !== false,
+            'status-sharing': settings.statusSharing || false,
+            'connection-quality': settings.connectionQuality || 'auto',
+            'sync-frequency': settings.syncFrequency || 250,
+            'lag-compensation': settings.lagCompensation !== false,
+            'anonymous-mode': settings.anonymousMode || false,
+            'block-invites': settings.blockInvites || false,
+            'data-usage': settings.dataUsage || false
+        };
+
+        for (let [id, value] of Object.entries(elements)) {
+            const element = document.getElementById(id);
+            if (element) {
+                if (element.type === 'checkbox') {
+                    element.checked = value;
+                } else if (element.type === 'range') {
+                    element.value = value;
+                    // Update value display
+                    const valueDisplay = document.getElementById(id.replace('-', '-value').replace('duration', 'value').replace('timeout', 'value').replace('frequency', 'value'));
+                    if (valueDisplay) valueDisplay.textContent = value;
+                } else {
+                    element.value = value;
+                }
+            }
+        }
+    }
+
+    setupOnlineSettingsEvents() {
+        // Timer duration slider
+        const timerSlider = document.getElementById('online-timer-duration');
+        const timerValue = document.getElementById('timer-value');
+        if (timerSlider && timerValue) {
+            timerSlider.addEventListener('input', () => {
+                timerValue.textContent = timerSlider.value;
+            });
+        }
+
+        // Reconnect timeout slider
+        const reconnectSlider = document.getElementById('reconnect-timeout');
+        const reconnectValue = document.getElementById('reconnect-value');
+        if (reconnectSlider && reconnectValue) {
+            reconnectSlider.addEventListener('input', () => {
+                reconnectValue.textContent = reconnectSlider.value;
+            });
+        }
+
+        // Sync frequency slider
+        const syncSlider = document.getElementById('sync-frequency');
+        const syncValue = document.getElementById('sync-value');
+        if (syncSlider && syncValue) {
+            syncSlider.addEventListener('input', () => {
+                syncValue.textContent = syncSlider.value;
+            });
+        }
+
+        // Save settings button
+        const saveBtn = document.getElementById('save-online-settings');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveOnlineSettings());
+        }
+
+        // Reset settings button
+        const resetBtn = document.getElementById('reset-online-settings');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.resetOnlineSettings());
+        }
+
+        // Close modal button
+        const closeBtn = document.getElementById('close-online-settings');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                document.getElementById('online-settings-modal').style.display = 'none';
+            });
+        }
+    }
+
+    saveOnlineSettings() {
+        const settings = {};
+        const elements = [
+            'online-timer-enabled', 'online-timer-duration', 'auto-start-enabled', 'rematch-enabled',
+            'room-privacy', 'max-players', 'spectator-mode', 'reconnect-timeout',
+            'sound-effects', 'move-animations', 'turn-notifications', 'color-theme',
+            'chat-enabled', 'emoji-reactions', 'status-sharing',
+            'connection-quality', 'sync-frequency', 'lag-compensation',
+            'anonymous-mode', 'block-invites', 'data-usage'
+        ];
+
+        elements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                if (element.type === 'checkbox') {
+                    settings[this.camelCase(id)] = element.checked;
+                } else if (element.type === 'range') {
+                    settings[this.camelCase(id)] = parseInt(element.value);
+                } else {
+                    settings[this.camelCase(id)] = element.value;
+                }
+            }
+        });
+
+        localStorage.setItem('colorwars-online-settings', JSON.stringify(settings));
+        
+        // Apply some settings immediately
+        this.timerEnabled = settings.onlineTimerEnabled;
+        this.timeLeft = settings.onlineTimerDuration;
+        this.soundEnabled = settings.soundEffects;
+        this.animationEnabled = settings.moveAnimations;
+
+        // Show success message
+        this.addOnlineMessage('Settings saved successfully!', 'system');
+        
+        // Close modal
+        document.getElementById('online-settings-modal').style.display = 'none';
+    }
+
+    resetOnlineSettings() {
+        localStorage.removeItem('colorwars-online-settings');
+        this.loadOnlineSettings();
+        this.addOnlineMessage('Settings reset to defaults', 'system');
+    }
+
+    camelCase(str) {
+        return str.replace(/-([a-z])/g, (match, letter) => letter.toUpperCase());
     }
 
     handleTimeUp() {
@@ -2587,6 +2821,32 @@ class ColorWarsGame {
         if (this.isOnlineGame && this.gameState === 'playing') {
             // Keep online sidebar visible during gameplay
             this.showOnlineSidebar();
+        } else if (!this.isOnlineGame) {
+            // Reset modal to initial state if not in online game
+            this.resetMultiplayerModal();
+        }
+    }
+
+    // Close all modals when clicking outside
+    setupModalCloseEvents() {
+        // Close multiplayer modal when clicking outside
+        const multiplayerModal = document.getElementById('multiplayer-modal');
+        if (multiplayerModal) {
+            multiplayerModal.addEventListener('click', (event) => {
+                if (event.target === multiplayerModal) {
+                    this.closeMultiplayerModal();
+                }
+            });
+        }
+
+        // Close settings modal when clicking outside
+        const settingsModal = document.getElementById('online-settings-modal');
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (event) => {
+                if (event.target === settingsModal) {
+                    settingsModal.style.display = 'none';
+                }
+            });
         }
     }
 }
