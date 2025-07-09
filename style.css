@@ -1710,6 +1710,7 @@ body {
 }
 
 .player-color-select {
+    -webkit-appearance: none;
     appearance: none;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 12px center;
@@ -2294,6 +2295,7 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     min-width: 200px;
+    -webkit-appearance: none;
     appearance: none;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 8px center;
@@ -2322,6 +2324,7 @@ body {
 
 .slider-container input[type="range"] {
     -webkit-appearance: none;
+    appearance: none;
     width: 150px;
     height: 6px;
     border-radius: 3px;
