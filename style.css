@@ -646,37 +646,6 @@ body {
     transform: translateX(-50%);
 }
 
-/* Vertical-specific animations */
-.dots.vertical .dot:nth-child(1),
-.dots.vertical .dot:nth-child(2) {
-    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseVertical 2s ease-in-out infinite;
-}
-
-.dots.vertical .dot:nth-child(1).expanding,
-.dots.vertical .dot:nth-child(2).expanding {
-    animation: dotExpandVertical 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-@keyframes dotPulseVertical {
-    0%, 100% { transform: translateX(-50%) scale(1); }
-    50% { transform: translateX(-50%) scale(1.05); }
-}
-
-@keyframes dotExpandVertical {
-    0% { 
-        transform: translateX(-50%) scale(0);
-        opacity: 0;
-    }
-    50% {
-        transform: translateX(-50%) scale(1.4);
-        opacity: 0.8;
-    }
-    100% { 
-        transform: translateX(-50%) scale(1);
-        opacity: 1;
-    }
-}
-
 /* Triangle pattern for 3 dots */
 .dots.triangle {
     display: block;
@@ -720,10 +689,64 @@ body {
     z-index: 1;
 }
 
+/* Base dot expanding animation - works for all layouts */
 .dot.expanding {
-    animation: dotExpand 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    animation: dotExpand 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
 }
 
+/* Specific animations for each layout that preserve positioning */
+
+/* Normal layout dots (flex) */
+.dots:not(.vertical):not(.triangle) .dot {
+    position: relative;
+    display: inline-block;
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulse 2s ease-in-out infinite;
+}
+
+.dots:not(.vertical):not(.triangle) .dot.expanding {
+    animation: dotExpandNormal 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+/* Vertical pattern animations */
+.dots.vertical .dot:nth-child(1),
+.dots.vertical .dot:nth-child(2) {
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseVertical 2s ease-in-out infinite;
+}
+
+.dots.vertical .dot:nth-child(1).expanding {
+    animation: dotExpandVertical 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.dots.vertical .dot:nth-child(2).expanding {
+    animation: dotExpandVertical 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+/* Triangle pattern animations */
+.dots.triangle .dot:nth-child(1) {
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseTriangleTop 2s ease-in-out infinite;
+}
+
+.dots.triangle .dot:nth-child(2) {
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseTriangleBottomLeft 2s ease-in-out infinite;
+}
+
+.dots.triangle .dot:nth-child(3) {
+    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseTriangleBottomRight 2s ease-in-out infinite;
+}
+
+.dots.triangle .dot:nth-child(1).expanding {
+    animation: dotExpandTriangleTop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.dots.triangle .dot:nth-child(2).expanding {
+    animation: dotExpandTriangleBottomLeft 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.dots.triangle .dot:nth-child(3).expanding {
+    animation: dotExpandTriangleBottomRight 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+/* Animation keyframes */
 @keyframes dotAppear {
     0% { 
         transform: scale(0) rotate(180deg);
@@ -744,17 +767,9 @@ body {
     50% { transform: scale(1.05); }
 }
 
-/* Triangle-specific pulse animation */
-.dots.triangle .dot:nth-child(1) {
-    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseTriangleTop 2s ease-in-out infinite;
-}
-
-.dots.triangle .dot:nth-child(2) {
-    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseTriangleBottomLeft 2s ease-in-out infinite;
-}
-
-.dots.triangle .dot:nth-child(3) {
-    animation: dotAppear 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), dotPulseTriangleBottomRight 2s ease-in-out infinite;
+@keyframes dotPulseVertical {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.05); }
 }
 
 @keyframes dotPulseTriangleTop {
@@ -772,7 +787,8 @@ body {
     50% { transform: translateX(50%) scale(1.05); }
 }
 
-@keyframes dotExpand {
+/* Expand animations that preserve positioning */
+@keyframes dotExpandNormal {
     0% { 
         transform: scale(0);
         opacity: 0;
@@ -787,17 +803,19 @@ body {
     }
 }
 
-/* Triangle-specific dot expanding animation */
-.dots.triangle .dot:nth-child(1).expanding {
-    animation: dotExpandTriangleTop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.dots.triangle .dot:nth-child(2).expanding {
-    animation: dotExpandTriangleBottomLeft 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.dots.triangle .dot:nth-child(3).expanding {
-    animation: dotExpandTriangleBottomRight 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+@keyframes dotExpandVertical {
+    0% { 
+        transform: translateX(-50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(-50%) scale(1.4);
+        opacity: 0.8;
+    }
+    100% { 
+        transform: translateX(-50%) scale(1);
+        opacity: 1;
+    }
 }
 
 @keyframes dotExpandTriangleTop {
@@ -841,6 +859,22 @@ body {
     }
     100% { 
         transform: translateX(50%) scale(1);
+        opacity: 1;
+    }
+}
+
+/* Remove the old redundant animations */
+@keyframes dotExpand {
+    0% { 
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.4);
+        opacity: 0.8;
+    }
+    100% { 
+        transform: scale(1);
         opacity: 1;
     }
 }

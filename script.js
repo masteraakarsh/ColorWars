@@ -147,12 +147,22 @@ class ColorWarsGame {
     renderBoard() {
         const boardElement = document.getElementById('game-board');
         
-        // Clear any lingering animation classes before destroying the board
+        // Complete cleanup of all animations and styles before re-rendering
         const allDots = boardElement.querySelectorAll('.dot');
         allDots.forEach(dot => {
             dot.classList.remove('expanding');
+            dot.style.transform = '';
+            dot.style.animation = '';
+        });
+
+        const allCells = boardElement.querySelectorAll('.cell');
+        allCells.forEach(cell => {
+            cell.classList.remove('exploding', 'chain-reaction', 'placing-dot');
+            cell.style.transform = '';
+            cell.style.animation = '';
         });
         
+        // Clear the board and recreate from scratch
         boardElement.innerHTML = '';
         boardElement.className = `game-board size-${this.boardSize}`;
 
@@ -162,6 +172,9 @@ class ColorWarsGame {
                 boardElement.appendChild(cell);
             }
         }
+
+        // Force reflow to ensure proper layout
+        boardElement.offsetHeight;
     }
 
     createCellElement(row, col) {
@@ -298,30 +311,12 @@ class ColorWarsGame {
             await this.explode(row, col, player);
         }
 
-        // Update UI
+        // Update UI - this will create the proper dot structure
         this.renderBoard();
         this.updatePlayerStats();
         
-        // Add expanding animation to newly placed dots
-        setTimeout(() => {
-            const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-            if (cellElement) {
-                const dots = cellElement.querySelectorAll('.dot');
-                
-                // First clear any existing expanding classes to prevent conflicts
-                dots.forEach(dot => dot.classList.remove('expanding'));
-                
-                // Then add expanding animation after a small delay
-                setTimeout(() => {
-                    dots.forEach(dot => dot.classList.add('expanding'));
-                    
-                    // Remove expanding class after animation completes
-                    setTimeout(() => {
-                        dots.forEach(dot => dot.classList.remove('expanding'));
-                    }, 600); // Slightly longer than the longest CSS animation duration to ensure cleanup
-                }, 10);
-            }
-        }, 100);
+        // Add expanding animation to newly placed dots with improved timing
+        this.addDotExpandingAnimation(row, col);
 
         // Check for win condition
         const winner = this.checkWinCondition();
@@ -331,6 +326,39 @@ class ColorWarsGame {
         } else {
             this.switchPlayer();
         }
+    }
+
+    addDotExpandingAnimation(row, col) {
+        // Use requestAnimationFrame to ensure DOM is updated before adding animation
+        requestAnimationFrame(() => {
+            const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (cellElement) {
+                const dots = cellElement.querySelectorAll('.dot');
+                
+                if (dots.length > 0) {
+                    // Clean up any existing expanding classes first
+                    dots.forEach(dot => {
+                        dot.classList.remove('expanding');
+                        // Force reflow to ensure class removal takes effect
+                        dot.offsetHeight;
+                    });
+                    
+                    // Add expanding animation with proper timing
+                    requestAnimationFrame(() => {
+                        dots.forEach(dot => dot.classList.add('expanding'));
+                        
+                        // Clean up after animation completes
+                        setTimeout(() => {
+                            dots.forEach(dot => {
+                                if (dot.parentElement) { // Check if dot still exists
+                                    dot.classList.remove('expanding');
+                                }
+                            });
+                        }, 500); // Match CSS animation duration
+                    });
+                }
+            }
+        });
     }
 
     async explode(row, col, player) {
@@ -1806,7 +1834,7 @@ class ColorWarsGame {
         this.moveHistory = data.gameState.moveHistory;
         this.gameState = data.gameState.gameStatus === 'ended' ? 'ended' : 'playing';
         
-        // Clean up any animation states before updating
+        // Comprehensive cleanup of all animations before updating
         this.clearAllAnimations();
         this.isAnimating = false;
         
@@ -1814,15 +1842,18 @@ class ColorWarsGame {
             this.showGameWinNotification(data.gameState.winner);
             this.endGame(data.gameState.winner);
         } else {
-            // Force a complete re-render of the board to ensure dots are properly displayed
-            this.renderBoard();
-            this.updateUI();
-            this.updatePlayerStats();
-            
-            // Restart timer for the new current player (but only if not in waiting state)
-            if (this.gameState === 'playing') {
-                this.startTimer();
-            }
+            // Force a complete re-render to ensure dots are properly displayed
+            // Use a small delay to ensure cleanup is complete
+            setTimeout(() => {
+                this.renderBoard();
+                this.updateUI();
+                this.updatePlayerStats();
+                
+                // Restart timer for the new current player (but only if not in waiting state)
+                if (this.gameState === 'playing') {
+                    this.startTimer();
+                }
+            }, 50);
         }
     }
 
@@ -1995,12 +2026,28 @@ class ColorWarsGame {
         const allDots = document.querySelectorAll('.dot');
         allDots.forEach(dot => {
             dot.classList.remove('expanding');
+            // Clear any inline transform styles that might interfere
+            dot.style.transform = '';
+            dot.style.animation = '';
         });
         
         const allCells = document.querySelectorAll('.cell');
         allCells.forEach(cell => {
             cell.classList.remove('exploding', 'chain-reaction', 'placing-dot');
+            // Clear any inline styles from animations
+            cell.style.transform = '';
+            cell.style.animation = '';
         });
+
+        // Force a reflow to ensure all changes take effect
+        document.body.offsetHeight;
+        
+        // Re-render the board to ensure proper dot structure
+        if (this.board && this.gameState !== 'setup') {
+            requestAnimationFrame(() => {
+                this.renderBoard();
+            });
+        }
     }
 
     showWaitingRoomUI() {
