@@ -82,6 +82,129 @@ body {
     transition: opacity 0.3s ease-in-out;
 }
 
+/* Mobile Responsive Styles for Sidebar */
+@media (max-width: 768px) {
+    .game-interface {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .game-sidebar {
+        width: 100%;
+        max-width: none;
+        padding: 20px;
+        max-height: 60vh;
+        order: 2; /* Place sidebar below the game board on mobile */
+        position: relative;
+        z-index: 10;
+        margin: 0;
+    }
+    
+    .game-board-container {
+        order: 1; /* Place game board above sidebar on mobile */
+        width: 100%;
+    }
+    
+    .game-board {
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
+        aspect-ratio: 1;
+    }
+    
+    .current-turn {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+        padding: 15px;
+    }
+    
+    .timer-container {
+        align-self: center;
+    }
+    
+    .game-title {
+        font-size: 2rem;
+    }
+    
+    .game-subtitle {
+        font-size: 1rem;
+    }
+    
+    .game-container {
+        padding: 15px;
+    }
+    
+    /* Mobile sidebar content adjustments */
+    .player-info {
+        gap: 10px;
+    }
+    
+    .player-card {
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+    
+    .game-controls {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .game-controls .btn {
+        flex: 1;
+        min-width: calc(50% - 4px);
+        font-size: 0.8rem;
+        padding: 8px 12px;
+    }
+    
+    .game-settings {
+        gap: 15px;
+    }
+    
+    .setting-group {
+        margin-bottom: 15px;
+    }
+    
+    .setting-group label {
+        font-size: 0.9rem;
+    }
+    
+    .setting-group select {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-sidebar {
+        padding: 15px;
+        max-height: 50vh;
+    }
+    
+    .game-title {
+        font-size: 1.5rem;
+    }
+    
+    .game-container {
+        padding: 10px;
+    }
+    
+    .game-controls .btn {
+        width: 100%;
+        min-width: 100%;
+        margin-bottom: 5px;
+    }
+    
+    .player-card {
+        padding: 8px;
+        font-size: 0.8rem;
+    }
+    
+    .setting-group label {
+        font-size: 0.8rem;
+    }
+}
+
 /* Online Sidebar Specific Styles */
 .online-sidebar {
     background: linear-gradient(135deg, rgba(78, 205, 196, 0.1) 0%, rgba(255, 255, 255, 0.95) 100%);

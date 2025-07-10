@@ -257,9 +257,10 @@ class GameRoom {
         // Make the move
         this.gameState.board[row][col].owner = player.color;
         
-        // First move for each player starts with 3 dots
+        // First move for each player starts with dots based on cell capacity
         if (isFirstMove) {
-            this.gameState.board[row][col].dots = 3;
+            // Start with 3 dots, but don't exceed cell's maximum capacity
+            this.gameState.board[row][col].dots = Math.min(3, this.gameState.board[row][col].maxDots);
         } else {
             this.gameState.board[row][col].dots++;
         }

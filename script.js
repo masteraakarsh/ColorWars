@@ -302,9 +302,10 @@ class ColorWarsGame {
         // Place dot(s)
         this.board[row][col].owner = player;
         
-        // First move for each player starts with 3 dots
+        // First move for each player starts with dots based on cell capacity
         if (isFirstMove) {
-            this.board[row][col].dots = 3;
+            // Start with 3 dots, but don't exceed cell's maximum capacity
+            this.board[row][col].dots = Math.min(3, this.board[row][col].maxDots);
         } else {
             this.board[row][col].dots++;
         }
@@ -876,9 +877,10 @@ class ColorWarsGame {
         // Simulate the move
         this.board[move.row][move.col].owner = player;
         
-        // First move for each player starts with 3 dots
+        // First move for each player starts with dots based on cell capacity
         if (isFirstMove) {
-            this.board[move.row][move.col].dots = 3;
+            // Start with 3 dots, but don't exceed cell's maximum capacity
+            this.board[move.row][move.col].dots = Math.min(3, this.board[move.row][move.col].maxDots);
         } else {
             this.board[move.row][move.col].dots++;
         }
