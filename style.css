@@ -107,9 +107,34 @@ body {
     
     .game-board {
         width: 100%;
-        max-width: 400px;
+        max-width: 90vw;
         margin: 0 auto;
+        padding: 15px;
+        gap: 4px;
+    }
+    
+    .cell {
+        width: auto;
+        height: auto;
         aspect-ratio: 1;
+        min-width: 0;
+        min-height: 0;
+        border-radius: 15px;
+    }
+    
+    .game-board.size-5 {
+        grid-template-columns: repeat(5, 1fr);
+        grid-template-rows: repeat(5, 1fr);
+    }
+    
+    .game-board.size-6 {
+        grid-template-columns: repeat(6, 1fr);
+        grid-template-rows: repeat(6, 1fr);
+    }
+    
+    .game-board.size-7 {
+        grid-template-columns: repeat(7, 1fr);
+        grid-template-rows: repeat(7, 1fr);
     }
     
     .current-turn {
@@ -173,6 +198,13 @@ body {
         font-size: 0.9rem;
         padding: 8px;
     }
+    
+    /* Mobile game status */
+    .game-status {
+        font-size: 0.9rem;
+        padding: 10px 15px;
+        text-align: center;
+    }
 }
 
 @media (max-width: 480px) {
@@ -202,6 +234,36 @@ body {
     
     .setting-group label {
         font-size: 0.8rem;
+    }
+    
+    /* Ultra-mobile game board optimization */
+    .game-board {
+        max-width: 95vw;
+        padding: 10px;
+        gap: 3px;
+        border-radius: 20px;
+    }
+    
+    .cell {
+        border-radius: 12px;
+    }
+    
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-width: 1px;
+    }
+    
+    .current-turn {
+        padding: 10px;
+    }
+    
+    .timer-display {
+        font-size: 1.2rem;
+    }
+    
+    .timer-label {
+        font-size: 0.7rem;
     }
 }
 
